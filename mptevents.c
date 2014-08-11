@@ -44,7 +44,7 @@ static void buf2hex(char *buf, int buf_len, char *hexbuf, int hexbuf_sz)
 	int i, j;
 
 	for (i = 0, j = 0; i < buf_len && j < hexbuf_sz - 4; i++) {
-		hexbuf[j] = nibble_to_hex(buf[i] >> 4);
+		hexbuf[j++] = nibble_to_hex(buf[i] >> 4);
 		hexbuf[j++] = nibble_to_hex(buf[i]);
 		hexbuf[j++] = ' ';
 	}
