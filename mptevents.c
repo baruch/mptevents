@@ -66,6 +66,13 @@ static void dump_log_data(struct MPT2_IOCTL_EVENTS *event)
 	// TODO: Parse or at least hexdump the LogData
 }
 
+static void dump_gpio_interrupt(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_GPIO_INTERRUPT *evt = (void*)&event->data;
+
+	syslog(LOG_INFO, "GPIO Interrupt: context=%u gpionum=%u reserved1=%u reserved2=%u", event->context, evt->GPIONum, evt->Reserved1, evt->Reserved2);
+}
+
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
 	char hexbuf[512];
@@ -77,6 +84,10 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 
 		case MPI2_EVENT_LOG_DATA:
 			dump_log_data(event);
+			break;
+
+		case MPI2_EVENT_GPIO_INTERRUPT:
+			dump_gpio_interrupt(event);
 			break;
 
 		case MPI2_EVENT_STATE_CHANGE:
@@ -95,7 +106,6 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 		case MPI2_EVENT_IR_CONFIGURATION_CHANGE_LIST:
 		case MPI2_EVENT_LOG_ENTRY_ADDED:
 		case MPI2_EVENT_SAS_PHY_COUNTER:
-		case MPI2_EVENT_GPIO_INTERRUPT:
 		case MPI2_EVENT_HOST_BASED_DISCOVERY_PHY:
 		case MPI2_EVENT_SAS_QUIESCE:
 		case MPI2_EVENT_SAS_NOTIFY_PRIMITIVE:
