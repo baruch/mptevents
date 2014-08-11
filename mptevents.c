@@ -58,6 +58,14 @@ static void dump_sas_device_status_change(struct MPT2_IOCTL_EVENTS *event)
 	syslog(LOG_INFO, "SAS Device Status Change: context=%u tag=%04x rc=%u port=%u asc=%02X ascq=%02X handle=%04x reserved2=%u SASAddress=%"PRIx64, event->context, evt->TaskTag, evt->ReasonCode, evt->PhysicalPort, evt->ASC, evt->ASCQ, evt->DevHandle, evt->Reserved2, evt->SASAddress);
 }
 
+static void dump_log_data(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_LOG_ENTRY_ADDED *evt = (void*)&event->data;
+
+	syslog(LOG_INFO, "Log Entry Added: context=%u timestamp=%"PRIu64" reserved1=%u seq=%u entry_qualifier=%u vp_id=%u vf_id=%u reserved2=%u", event->context, evt->TimeStamp, evt->Reserved1, evt->LogSequence, evt->LogEntryQualifier, evt->VP_ID, evt->VF_ID, evt->Reserved2);
+	// TODO: Parse or at least hexdump the LogData
+}
+
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
 	char hexbuf[512];
@@ -66,6 +74,33 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 		case MPI2_EVENT_SAS_DEVICE_STATUS_CHANGE:
 			dump_sas_device_status_change(event);
 			break;
+
+		case MPI2_EVENT_LOG_DATA:
+			dump_log_data(event);
+			break;
+
+		case MPI2_EVENT_STATE_CHANGE:
+		case MPI2_EVENT_HARD_RESET_RECEIVED:
+		case MPI2_EVENT_EVENT_CHANGE:
+		case MPI2_EVENT_TASK_SET_FULL:
+		case MPI2_EVENT_IR_OPERATION_STATUS:
+		case MPI2_EVENT_SAS_DISCOVERY:
+		case MPI2_EVENT_SAS_BROADCAST_PRIMITIVE:
+		case MPI2_EVENT_SAS_INIT_DEVICE_STATUS_CHANGE:
+		case MPI2_EVENT_SAS_INIT_TABLE_OVERFLOW:
+		case MPI2_EVENT_SAS_TOPOLOGY_CHANGE_LIST:
+		case MPI2_EVENT_SAS_ENCL_DEVICE_STATUS_CHANGE:
+		case MPI2_EVENT_IR_VOLUME:
+		case MPI2_EVENT_IR_PHYSICAL_DISK:
+		case MPI2_EVENT_IR_CONFIGURATION_CHANGE_LIST:
+		case MPI2_EVENT_LOG_ENTRY_ADDED:
+		case MPI2_EVENT_SAS_PHY_COUNTER:
+		case MPI2_EVENT_GPIO_INTERRUPT:
+		case MPI2_EVENT_HOST_BASED_DISCOVERY_PHY:
+		case MPI2_EVENT_SAS_QUIESCE:
+		case MPI2_EVENT_SAS_NOTIFY_PRIMITIVE:
+		case MPI2_EVENT_TEMP_THRESHOLD:
+		case MPI2_EVENT_HOST_MESSAGE:
 
 		default:
 			buf2hex((char *)event->data, sizeof(event->data), hexbuf, sizeof(hexbuf));
