@@ -211,7 +211,7 @@ static void dump_ir_physical_disk(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_IR_PHYSICAL_DISK *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "IR Physical Disk: context=%u reason=%hu(%s) phys_disk_num=%hu phys_disk_dev_handle=%xh slot=%hu enclosure_handle=%hu new_value=%u prev_value=%u reserved1=%hu reserved2=%hu",
+	syslog(LOG_INFO, "IR Physical Disk: context=%u reason=%hu(%s) phys_disk_num=%hu phys_disk_dev_handle=%hx slot=%hu enclosure_handle=%hu new_value=%u prev_value=%u reserved1=%hu reserved2=%hu",
 			event->context,
 			evt->ReasonCode, ir_physical_disk_rc_to_text(evt->ReasonCode),
 			evt->PhysDiskNum,
