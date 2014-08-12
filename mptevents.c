@@ -81,6 +81,13 @@ static void dump_name_only(const char *name, struct MPT2_IOCTL_EVENTS *event)
 	syslog(LOG_INFO, "%s: event=%u context=%u buf=%s", name, event->event, event->context, hexbuf);
 }
 
+static void dump_temperature_threshold(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_TEMPERATURE *evt = (void*)&event->data;
+
+	syslog(LOG_INFO, "Temperature Threshold: context=%u status=%04x sensornum=%u current_temp=%u, reversed1=%u reserved2=%u reserved3=%u reserved4=%u", event->context, evt->Status, evt->SensorNum, evt->CurrentTemperature, evt->Reserved1, evt->Reserved2, evt->Reserved3, evt->Reserved4);
+}
+
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
 	switch (event->event) {
@@ -173,7 +180,7 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 			break;
 
 		case MPI2_EVENT_TEMP_THRESHOLD:
-			dump_name_only("Tempt Threshold", event);
+			dump_temperature_threshold(event);
 			break;
 
 		case MPI2_EVENT_HOST_MESSAGE:
