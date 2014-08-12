@@ -141,10 +141,16 @@ static int enable_events(int fd, int port)
 	return ret;
 }
 
-static int handle_events(int fd, int port)
+/* We have to read all the events and figure out which of them is new and which isn't */
+static int handle_events(int fd, int port, uint32_t *highest_context, int first_read)
 {
 	int ret;
-	struct mpt2_ioctl_eventreport events;
+	struct mpt2_ioctl_eventreport {
+		struct mpt2_ioctl_header hdr;
+		struct MPT2_IOCTL_EVENTS event_data[MPT2SAS_CTL_EVENT_LOG_SIZE];
+	} events;
+	int i;
+	uint32_t new_context = *highest_context;
 
 	memset(&events, 0, sizeof(events));
     events.hdr.ioc_number = port;
@@ -157,8 +163,24 @@ static int handle_events(int fd, int port)
 		return -1;
 	}
 
-	if (events.event_data[0].event)
-		dump_event(&events.event_data[0]);
+	for (i = 0; i < MPT2SAS_CTL_EVENT_LOG_SIZE; i++) {
+		struct MPT2_IOCTL_EVENTS *event = &events.event_data[i];
+
+		if (!event->event)
+			continue;
+
+		/* Because we read the entire circular buffer we can get the highest
+		 * context before the older contexts that we didn't read yet. As such
+		 * we need to compare the context to the old context we had and only
+		 * replace it once we finished the read
+		 */
+		if (first_read || (int)(event->context - *highest_context) > 0) {
+			dump_event(event);
+			new_context = event->context;
+		}
+	}
+
+	*highest_context = new_context;
 	return 0;
 }
 
@@ -167,6 +189,7 @@ static void monitor_mpt(int fd, int port)
 	int ret;
 	int poll_fd;
 	struct epoll_event event;
+	uint32_t last_context = 0;
 
 	ret = enable_events(fd, port);
 	if (ret < 0)
@@ -189,6 +212,10 @@ static void monitor_mpt(int fd, int port)
 		return;
 	}
 
+	// First run to get the context
+	handle_events(fd, port, &last_context, 1);
+
+	// Now we run the normal loop with the received context
 	do {
 		ret = epoll_wait(poll_fd, &event, 1, -1);
 		if (ret < 0) {
@@ -202,7 +229,7 @@ static void monitor_mpt(int fd, int port)
 			continue;
 		}
 
-		ret = handle_events(fd, port);
+		ret = handle_events(fd, port, &last_context, 0);
 	} while (ret == 0);
 
 	close(poll_fd);
