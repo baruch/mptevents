@@ -224,6 +224,57 @@ static void dump_ir_physical_disk(struct MPT2_IOCTL_EVENTS *event)
 			evt->Reserved2);
 }
 
+static const char *ir_config_element_flag_to_text(uint16_t flags)
+{
+	switch (flags & MPI2_EVENT_IR_CHANGE_EFLAGS_ELEMENT_TYPE_MASK) {
+		case MPI2_EVENT_IR_CHANGE_EFLAGS_VOLUME_ELEMENT: return "VOLUME_ELEMENT";
+		case MPI2_EVENT_IR_CHANGE_EFLAGS_VOLPHYSDISK_ELEMENT: return "VOLPHYSDISK_ELEMENT";
+		case MPI2_EVENT_IR_CHANGE_EFLAGS_HOTSPARE_ELEMENT: return "HOTSPARE_ELEMENT";
+	}
+
+	return "UNKNOWN";
+}
+
+static const char *ir_config_element_reason_to_text(uint8_t rc)
+{
+	switch (rc) {
+		case MPI2_EVENT_IR_CHANGE_RC_ADDED: return "ADDED";
+		case MPI2_EVENT_IR_CHANGE_RC_REMOVED: return "REMOVED";
+		case MPI2_EVENT_IR_CHANGE_RC_NO_CHANGE: return "NO_CHANGE";
+		case MPI2_EVENT_IR_CHANGE_RC_HIDE: return "HIDE";
+		case MPI2_EVENT_IR_CHANGE_RC_UNHIDE: return "UNHIDE";
+		case MPI2_EVENT_IR_CHANGE_RC_VOLUME_CREATED: return "VOLUME_CREATED";
+		case MPI2_EVENT_IR_CHANGE_RC_VOLUME_DELETED: return "VOLUME_DELETED";
+		case MPI2_EVENT_IR_CHANGE_RC_PD_CREATED: return "PD_CREATED";
+		case MPI2_EVENT_IR_CHANGE_RC_PD_DELETED: return "PD_DELETED";
+	}
+
+	return "UNKNOWN";
+}
+
+static void dump_ir_config_change_list(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_IR_CONFIG_CHANGE_LIST *evt = (void*)&event->data;
+
+	syslog(LOG_INFO, "IR Config Change List: context=%u num_elements=%hu config_num=%hu flags=%x reserved1=%hu reserved2=%hu",
+			event->context,
+			evt->NumElements,
+			evt->ConfigNum,
+			evt->Flags,
+			evt->Reserved1,
+			evt->Reserved2);
+
+	int i;
+	for (i = 0; i < evt->NumElements; i++) {
+		MPI2_EVENT_IR_CONFIG_ELEMENT *elem = &evt->ConfigElement[i];
+		syslog(LOG_INFO, "IR Config Change List Element: flags=%hx(%s) vol_dev_handle=%hx reason=%hu(%s) phys_disk_num=%hu phys_disk_dev_handle=%hx",
+				elem->ElementFlags, ir_config_element_flag_to_text(elem->ElementFlags),
+				elem->VolDevHandle,
+				elem->ReasonCode, ir_config_element_reason_to_text(elem->ReasonCode),
+				elem->PhysDiskNum,
+				elem->PhysDiskDevHandle);
+	}
+}
 
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
@@ -293,7 +344,7 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 			break;
 
 		case MPI2_EVENT_IR_CONFIGURATION_CHANGE_LIST:
-			dump_name_only("IR Configuration Change List", event);
+			dump_ir_config_change_list(event);
 			break;
 
 		case MPI2_EVENT_LOG_ENTRY_ADDED:
