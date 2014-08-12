@@ -122,6 +122,17 @@ static void dump_temperature_threshold(struct MPT2_IOCTL_EVENTS *event)
 	syslog(LOG_INFO, "Temperature Threshold: context=%u status=%04x sensornum=%u current_temp=%u, reversed1=%u reserved2=%u reserved3=%u reserved4=%u", event->context, evt->Status, evt->SensorNum, evt->CurrentTemperature, evt->Reserved1, evt->Reserved2, evt->Reserved3, evt->Reserved4);
 }
 
+static void dump_hard_reset_received(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_HARD_RESET_RECEIVED *evt = (void*)&event->data;
+
+	syslog(LOG_INFO, "Hard Reset Received: context=%u port=%u reserved1=%u reserved2=%u",
+			event->context,
+			evt->Port,
+			evt->Reserved1,
+			evt->Reserved2);
+}
+
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
 	switch (event->event) {
@@ -142,7 +153,7 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 			break;
 
 		case MPI2_EVENT_HARD_RESET_RECEIVED:
-			dump_name_only("Hard Reset Received", event);
+			dump_hard_reset_received(event);
 			break;
 
 		case MPI2_EVENT_EVENT_CHANGE:
