@@ -133,6 +133,13 @@ static void dump_hard_reset_received(struct MPT2_IOCTL_EVENTS *event)
 			evt->Reserved2);
 }
 
+static void dump_task_set_full(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_TASK_SET_FULL *evt = (void*)&event->data;
+
+	syslog(LOG_INFO, "Task Set Full: context=%u dev_handle=%hx current_depth=%hu", event->context, evt->DevHandle, evt->CurrentDepth);
+}
+
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
 	switch (event->event) {
@@ -161,7 +168,7 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 			break;
 
 		case MPI2_EVENT_TASK_SET_FULL:
-			dump_name_only("Task Set Full", event);
+			dump_task_set_full(event);
 			break;
 
 		case MPI2_EVENT_IR_OPERATION_STATUS:
