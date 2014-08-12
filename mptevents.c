@@ -381,6 +381,30 @@ static void dump_sas_broadcast_primitive(struct MPT2_IOCTL_EVENTS *event)
 			evt->Primitive, sas_broadcast_primitive_to_text(evt->Primitive));
 }
 
+static const char *sas_notify_primitive_to_text(uint8_t primitive)
+{
+	switch (primitive) {
+		case MPI2_EVENT_NOTIFY_ENABLE_SPINUP: return "ENABLE_SPINUP";
+		case MPI2_EVENT_NOTIFY_POWER_LOSS_EXPECTED: return "POWER_LOSS_EXPECTED";
+		case MPI2_EVENT_NOTIFY_RESERVED1: return "RESERVED1";
+		case MPI2_EVENT_NOTIFY_RESERVED2: return "RESERVED2";
+	}
+
+	return "UNKNOWN";
+}
+
+static void dump_sas_notify_primitive(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_SAS_NOTIFY_PRIMITIVE *evt = (void*)&event->data;
+
+	syslog(LOG_INFO, "SAS Notify Primitive: context=%u phy_num=%hu port=%hu primitive=%hu(%s) reserved1=%hx",
+			event->context,
+			evt->PhyNum,
+			evt->Port,
+			evt->Primitive, sas_notify_primitive_to_text(evt->Primitive),
+			evt->Reserved1);
+}
+
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
 	switch (event->event) {
@@ -469,7 +493,7 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 			break;
 
 		case MPI2_EVENT_SAS_NOTIFY_PRIMITIVE:
-			dump_name_only("SAS Notify Primitive", event);
+			dump_sas_notify_primitive(event);
 			break;
 
 		case MPI2_EVENT_TEMP_THRESHOLD:
