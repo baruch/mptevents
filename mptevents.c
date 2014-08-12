@@ -73,10 +73,16 @@ static void dump_gpio_interrupt(struct MPT2_IOCTL_EVENTS *event)
 	syslog(LOG_INFO, "GPIO Interrupt: context=%u gpionum=%u reserved1=%u reserved2=%u", event->context, evt->GPIONum, evt->Reserved1, evt->Reserved2);
 }
 
-static void dump_event(struct MPT2_IOCTL_EVENTS *event)
+static void dump_name_only(const char *name, struct MPT2_IOCTL_EVENTS *event)
 {
 	char hexbuf[512];
 
+	buf2hex((char *)event->data, sizeof(event->data), hexbuf, sizeof(hexbuf));
+	syslog(LOG_INFO, "%s: event=%u context=%u buf=%s", name, event->event, event->context, hexbuf);
+}
+
+static void dump_event(struct MPT2_IOCTL_EVENTS *event)
+{
 	switch (event->event) {
 		case MPI2_EVENT_SAS_DEVICE_STATUS_CHANGE:
 			dump_sas_device_status_change(event);
@@ -91,30 +97,91 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 			break;
 
 		case MPI2_EVENT_STATE_CHANGE:
+			dump_name_only("State Change", event);
+			break;
+
 		case MPI2_EVENT_HARD_RESET_RECEIVED:
+			dump_name_only("Hard Reset Received", event);
+			break;
+
 		case MPI2_EVENT_EVENT_CHANGE:
+			dump_name_only("Event Change", event);
+			break;
+
 		case MPI2_EVENT_TASK_SET_FULL:
+			dump_name_only("Task Set Full", event);
+			break;
+
 		case MPI2_EVENT_IR_OPERATION_STATUS:
+			dump_name_only("IR Operation Status", event);
+			break;
+
 		case MPI2_EVENT_SAS_DISCOVERY:
+			dump_name_only("SAS Discovery", event);
+			break;
+
 		case MPI2_EVENT_SAS_BROADCAST_PRIMITIVE:
+			dump_name_only("SAS Broadcast Primitive", event);
+			break;
+
 		case MPI2_EVENT_SAS_INIT_DEVICE_STATUS_CHANGE:
+			dump_name_only("SAS Init Device Status Change", event);
+			break;
+
 		case MPI2_EVENT_SAS_INIT_TABLE_OVERFLOW:
+			dump_name_only("SAS Init Table Overflow", event);
+			break;
+
 		case MPI2_EVENT_SAS_TOPOLOGY_CHANGE_LIST:
+			dump_name_only("SAS Topology Change List", event);
+			break;
+
 		case MPI2_EVENT_SAS_ENCL_DEVICE_STATUS_CHANGE:
+			dump_name_only("SAS Enclosure Device Status Change", event);
+			break;
+
 		case MPI2_EVENT_IR_VOLUME:
+			dump_name_only("IR Volume", event);
+			break;
+
 		case MPI2_EVENT_IR_PHYSICAL_DISK:
+			dump_name_only("IR Physical Disk", event);
+			break;
+
 		case MPI2_EVENT_IR_CONFIGURATION_CHANGE_LIST:
+			dump_name_only("IR Configuration Change List", event);
+			break;
+
 		case MPI2_EVENT_LOG_ENTRY_ADDED:
+			dump_name_only("Log Entry Added", event);
+			break;
+
 		case MPI2_EVENT_SAS_PHY_COUNTER:
+			dump_name_only("SAS Phy Counter", event);
+			break;
+
 		case MPI2_EVENT_HOST_BASED_DISCOVERY_PHY:
+			dump_name_only("Host Based Discovery Phy", event);
+			break;
+
 		case MPI2_EVENT_SAS_QUIESCE:
+			dump_name_only("SAS Queisce", event);
+			break;
+
 		case MPI2_EVENT_SAS_NOTIFY_PRIMITIVE:
+			dump_name_only("SAS Notify Primitive", event);
+			break;
+
 		case MPI2_EVENT_TEMP_THRESHOLD:
+			dump_name_only("Tempt Threshold", event);
+			break;
+
 		case MPI2_EVENT_HOST_MESSAGE:
+			dump_name_only("Host Message", event);
+			break;
 
 		default:
-			buf2hex((char *)event->data, sizeof(event->data), hexbuf, sizeof(hexbuf));
-			syslog(LOG_INFO, "mpt event: event=%u context=%u buf=%s", event->event, event->context, hexbuf);
+			dump_name_only("Unknown Event", event);
 			break;
 	}
 }
