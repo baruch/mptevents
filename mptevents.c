@@ -51,11 +51,45 @@ static void buf2hex(char *buf, int buf_len, char *hexbuf, int hexbuf_sz)
 	hexbuf[j] = 0;
 }
 
+static const char *reason_code_to_text(unsigned rc)
+{
+	switch (rc) {
+		case MPI2_EVENT_SAS_DEV_STAT_RC_SMART_DATA:
+			return "SMART_DATA";
+		case MPI2_EVENT_SAS_DEV_STAT_RC_UNSUPPORTED:
+			return "UNSUPPORTED";
+		case MPI2_EVENT_SAS_DEV_STAT_RC_INTERNAL_DEVICE_RESET:
+			return "INTERNAL_DEVICE_RESET";
+		case MPI2_EVENT_SAS_DEV_STAT_RC_TASK_ABORT_INTERNAL:
+			return "TASK_ABORT_INTERNAL";
+		case MPI2_EVENT_SAS_DEV_STAT_RC_ABORT_TASK_SET_INTERNAL:
+			return "ABORT_TASK_SET_INTERNAL";
+		case MPI2_EVENT_SAS_DEV_STAT_RC_CLEAR_TASK_SET_INTERNAL:
+			return "CLEAR_TASK_SET_INTERNAL";
+		case MPI2_EVENT_SAS_DEV_STAT_RC_QUERY_TASK_INTERNAL:
+			return "QUERY_TASK_INTERNAL";
+		case MPI2_EVENT_SAS_DEV_STAT_RC_ASYNC_NOTIFICATION:
+			return "ASYNC_NOTIFICATION";
+		case MPI2_EVENT_SAS_DEV_STAT_RC_CMP_INTERNAL_DEV_RESET:
+			return "CMP_INTERNAL_DEV_RESET";
+		case MPI2_EVENT_SAS_DEV_STAT_RC_CMP_TASK_ABORT_INTERNAL:
+			return "CMP_TASK_ABORT_INTERNAL";
+		case MPI2_EVENT_SAS_DEV_STAT_RC_SATA_INIT_FAILURE:
+			return "SATA_INIT_FAILURE";
+		case MPI2_EVENT_SAS_DEV_STAT_RC_EXPANDER_REDUCED_FUNCTIONALITY:
+			return "EXPANDER_REDUCED_FUNCTIONALITY";
+		case MPI2_EVENT_SAS_DEV_STAT_RC_CMP_EXPANDER_REDUCED_FUNCTIONALITY:
+			return "CMP_EXPANDER_REDUCED_FUNCTIONALITY";
+	}
+
+	return "UNKNOWN";
+}
+
 static void dump_sas_device_status_change(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_SAS_DEVICE_STATUS_CHANGE *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "SAS Device Status Change: context=%u tag=%04x rc=%u port=%u asc=%02X ascq=%02X handle=%04x reserved2=%u SASAddress=%"PRIx64, event->context, evt->TaskTag, evt->ReasonCode, evt->PhysicalPort, evt->ASC, evt->ASCQ, evt->DevHandle, evt->Reserved2, evt->SASAddress);
+	syslog(LOG_INFO, "SAS Device Status Change: context=%u tag=%04x rc=%u(%s) port=%u asc=%02X ascq=%02X handle=%04x reserved2=%u SASAddress=%"PRIx64, event->context, evt->TaskTag, evt->ReasonCode, reason_code_to_text(evt->ReasonCode), evt->PhysicalPort, evt->ASC, evt->ASCQ, evt->DevHandle, evt->Reserved2, evt->SASAddress);
 }
 
 static void dump_log_data(struct MPT2_IOCTL_EVENTS *event)
