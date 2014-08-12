@@ -140,6 +140,38 @@ static void dump_task_set_full(struct MPT2_IOCTL_EVENTS *event)
 	syslog(LOG_INFO, "Task Set Full: context=%u dev_handle=%hx current_depth=%hu", event->context, evt->DevHandle, evt->CurrentDepth);
 }
 
+static const char *raid_op_to_text(uint8_t raid_op)
+{
+	switch (raid_op) {
+		case MPI2_EVENT_IR_RAIDOP_RESYNC:
+			return "RESYNC";
+		case MPI2_EVENT_IR_RAIDOP_ONLINE_CAP_EXPANSION:
+			return "ONLINE_CAPACITY_EXPANSION";
+		case MPI2_EVENT_IR_RAIDOP_CONSISTENCY_CHECK:
+			return "CONSISTENCY_CHECK";
+		case MPI2_EVENT_IR_RAIDOP_BACKGROUND_INIT:
+			return "BACKGROUND_INIT";
+		case MPI2_EVENT_IR_RAIDOP_MAKE_DATA_CONSISTENT:
+			return "MAKE_DATA_CONSISTENT";
+	}
+
+	return "UNKNOWN";
+}
+
+static void dump_ir_operation_status(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_IR_OPERATION_STATUS *evt = (void*)&event->data;
+
+	syslog(LOG_INFO, "IR Operation Status: context=%u vol_dev_handle=%hx raid_op=%hu(%s) percent=%hu elapsed_sec=%u reserved1=%hu reserved2=%hu",
+			event->context,
+			evt->VolDevHandle,
+			evt->RAIDOperation, raid_op_to_text(evt->RAIDOperation),
+			evt->PercentComplete,
+			evt->ElapsedSeconds,
+			evt->Reserved1,
+			evt->Reserved2);
+}
+
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
 	switch (event->event) {
@@ -172,7 +204,7 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 			break;
 
 		case MPI2_EVENT_IR_OPERATION_STATUS:
-			dump_name_only("IR Operation Status", event);
+			dump_ir_operation_status(event);
 			break;
 
 		case MPI2_EVENT_SAS_DISCOVERY:
