@@ -172,6 +172,30 @@ static void dump_ir_operation_status(struct MPT2_IOCTL_EVENTS *event)
 			evt->Reserved2);
 }
 
+static const char *ir_volume_code_to_text(uint8_t rc)
+{
+	switch (rc) {
+		case MPI2_EVENT_IR_VOLUME_RC_SETTINGS_CHANGED: return "SETTINGS_CHANGED";
+		case MPI2_EVENT_IR_VOLUME_RC_STATUS_FLAGS_CHANGED: return "STATUS_FLAGS_CHANGED";
+		case MPI2_EVENT_IR_VOLUME_RC_STATE_CHANGED: return "STATE_CHANGED";
+	}
+
+	return "UNKNOWN";
+}
+
+static void dump_ir_volume(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_IR_VOLUME *evt = (void*)&event->data;
+
+	syslog(LOG_INFO, "IR Volume: context=%u vol_dev_handle=%hx reason=%hu(%s) new_value=%u prev_value=%u reserved1=%hu",
+			event->context,
+			evt->VolDevHandle,
+			evt->ReasonCode, ir_volume_code_to_text(evt->ReasonCode),
+			evt->NewValue,
+			evt->PreviousValue,
+			evt->Reserved1);
+}
+
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
 	switch (event->event) {
@@ -232,7 +256,7 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 			break;
 
 		case MPI2_EVENT_IR_VOLUME:
-			dump_name_only("IR Volume", event);
+			dump_ir_volume(event);
 			break;
 
 		case MPI2_EVENT_IR_PHYSICAL_DISK:
