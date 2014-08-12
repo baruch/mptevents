@@ -353,6 +353,34 @@ static void dump_sas_discovery(struct MPT2_IOCTL_EVENTS *event)
 			evt->Reserved1);
 }
 
+static const char *sas_broadcast_primitive_to_text(uint8_t primitive)
+{
+	switch (primitive) {
+		case MPI2_EVENT_PRIMITIVE_CHANGE: return "CHANGE";
+		case MPI2_EVENT_PRIMITIVE_SES: return "SES";
+		case MPI2_EVENT_PRIMITIVE_EXPANDER: return "EXPANDER";
+		case MPI2_EVENT_PRIMITIVE_ASYNCHRONOUS_EVENT: return "ASYNCHRONOUS_EVENT";
+		case MPI2_EVENT_PRIMITIVE_RESERVED3: return "RESERVED3";
+		case MPI2_EVENT_PRIMITIVE_RESERVED4: return "RESERVED4";
+		case MPI2_EVENT_PRIMITIVE_CHANGE0_RESERVED: return "CHANGE0_RESERVED";
+		case MPI2_EVENT_PRIMITIVE_CHANGE1_RESERVED: return "CHANGE1_RESERVED";
+	}
+
+	return "UNKNOWN";
+}
+
+static void dump_sas_broadcast_primitive(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_SAS_BROADCAST_PRIMITIVE *evt = (void*)&event->data;
+
+	syslog(LOG_INFO, "SAS Broadcast Primitive: context=%u phy_num=%hu port=%hu port_width=%hu primitive=%hu(%s)",
+			event->context,
+			evt->PhyNum,
+			evt->Port,
+			evt->PortWidth,
+			evt->Primitive, sas_broadcast_primitive_to_text(evt->Primitive));
+}
+
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
 	switch (event->event) {
@@ -393,7 +421,7 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 			break;
 
 		case MPI2_EVENT_SAS_BROADCAST_PRIMITIVE:
-			dump_name_only("SAS Broadcast Primitive", event);
+			dump_sas_broadcast_primitive(event);
 			break;
 
 		case MPI2_EVENT_SAS_INIT_DEVICE_STATUS_CHANGE:
