@@ -276,6 +276,83 @@ static void dump_ir_config_change_list(struct MPT2_IOCTL_EVENTS *event)
 	}
 }
 
+static const char *sas_discovery_flags_to_text(uint8_t flags)
+{
+	static char text[128];
+	int i = 0;
+
+	if (flags & MPI2_EVENT_SAS_DISC_IN_PROGRESS)
+		i += sprintf(text, "%s", "IN_PROGRESS");
+	if (flags & MPI2_EVENT_SAS_DISC_DEVICE_CHANGE) {
+		if (i > 0)
+			text[i++] = ',';
+		sprintf(text + i, "%s", "DEVICE_CHANGE");
+	}
+	return text;
+}
+
+static const char *sas_discovery_reason_to_text(uint8_t reason)
+{
+	if (reason == MPI2_EVENT_SAS_DISC_RC_STARTED)
+		return "STARTED";
+	else if (reason == MPI2_EVENT_SAS_DISC_RC_COMPLETED)
+		return "COMPLETED";
+	else
+		return "UNKNOWN";
+}
+
+static const char *sas_discovery_status_to_text(uint32_t status)
+{
+	static char text[256];
+	int i = 0;
+
+#define OUTPUT_FLAG(val, name) \
+	do { \
+		if (status & val) { \
+			if (i > 0) \
+				text[i++] = ','; \
+			i += sprintf(text+i, "%s", name); \
+		} \
+	} while (0)
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_MAX_ENCLOSURES_EXCEED, "MAX_ENCLOSURES_EXCEED");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_MAX_EXPANDERS_EXCEED, "MAX_EXPANDERS_EXCEED");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_MAX_DEVICES_EXCEED, "MAX_DEVICES_EXCEED");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_MAX_TOPO_PHYS_EXCEED, "MAX_TOPO_PHYS_EXCEED");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_DOWNSTREAM_INITIATOR, "DOWNSTREAM_INITIATOR");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_MULTI_SUBTRACTIVE_SUBTRACTIVE, "MULTI_SUBTRACTIVE_SUBTRACTIVE");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_EXP_MULTI_SUBTRACTIVE, "EXP_MULTI_SUBTRACTIVE");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_MULTI_PORT_DOMAIN, "MULTI_PORT_DOMAIN");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_TABLE_TO_SUBTRACTIVE_LINK, "TABLE_TO_SUBTRACTIVE_LINK");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_UNSUPPORTED_DEVICE, "UNSUPPORTED_DEVICE");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_TABLE_LINK, "TABLE_LINK");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_SUBTRACTIVE_LINK, "SUBTRACTIVE_LINK");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_SMP_CRC_ERROR, "SMP_CRC_ERROR");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_SMP_FUNCTION_FAILED, "SMP_FUNCTION_FAILED");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_INDEX_NOT_EXIST, "INDEX_NOT_EXIST");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_OUT_ROUTE_ENTRIES, "OUT_ROUTE_ENTRIES");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_SMP_TIMEOUT, "SMP_TIMEOUT");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_MULTIPLE_PORTS, "MULTIPLE_PORTS");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_UNADDRESSABLE_DEVICE, "UNADDRESSABLE_DEVICE");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_DISC_DS_LOOP_DETECTED, "LOOP_DETECTED");
+#undef OUTPUT_FLAG
+
+	return text;
+}
+
+
+static void dump_sas_discovery(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_SAS_DISCOVERY *evt = (void*)&event->data;
+
+	syslog(LOG_INFO, "SAS Discovery: context=%u flags=%02hx(%s) reason=%hx(%s) physical_port=%hx discovery_status=%x(%s) reserved1=%hx",
+			event->context,
+			evt->Flags, sas_discovery_flags_to_text(evt->Flags),
+			evt->ReasonCode, sas_discovery_reason_to_text(evt->ReasonCode),
+			evt->PhysicalPort,
+			evt->DiscoveryStatus, sas_discovery_status_to_text(evt->DiscoveryStatus),
+			evt->Reserved1);
+}
+
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
 	switch (event->event) {
@@ -312,7 +389,7 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 			break;
 
 		case MPI2_EVENT_SAS_DISCOVERY:
-			dump_name_only("SAS Discovery", event);
+			dump_sas_discovery(event);
 			break;
 
 		case MPI2_EVENT_SAS_BROADCAST_PRIMITIVE:
