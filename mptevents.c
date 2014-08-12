@@ -196,6 +196,35 @@ static void dump_ir_volume(struct MPT2_IOCTL_EVENTS *event)
 			evt->Reserved1);
 }
 
+static const char *ir_physical_disk_rc_to_text(uint8_t rc)
+{
+	switch (rc) {
+		case MPI2_EVENT_IR_PHYSDISK_RC_SETTINGS_CHANGED: return "SETTINGS_CHANGED";
+		case MPI2_EVENT_IR_PHYSDISK_RC_STATUS_FLAGS_CHANGED: return "STATUS_FLAGS_CHANGED";
+		case MPI2_EVENT_IR_PHYSDISK_RC_STATE_CHANGED: return "STATE_CHANGED";
+	}
+
+	return "UNKNOWN";
+}
+
+static void dump_ir_physical_disk(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_IR_PHYSICAL_DISK *evt = (void*)&event->data;
+
+	syslog(LOG_INFO, "IR Physical Disk: context=%u reason=%hu(%s) phys_disk_num=%hu phys_disk_dev_handle=%xh slot=%hu enclosure_handle=%hu new_value=%u prev_value=%u reserved1=%hu reserved2=%hu",
+			event->context,
+			evt->ReasonCode, ir_physical_disk_rc_to_text(evt->ReasonCode),
+			evt->PhysDiskNum,
+			evt->PhysDiskDevHandle,
+			evt->Slot,
+			evt->EnclosureHandle,
+			evt->NewValue,
+			evt->PreviousValue,
+			evt->Reserved1,
+			evt->Reserved2);
+}
+
+
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
 	switch (event->event) {
@@ -260,7 +289,7 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 			break;
 
 		case MPI2_EVENT_IR_PHYSICAL_DISK:
-			dump_name_only("IR Physical Disk", event);
+			dump_ir_physical_disk(event);
 			break;
 
 		case MPI2_EVENT_IR_CONFIGURATION_CHANGE_LIST:
