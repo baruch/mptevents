@@ -557,6 +557,28 @@ static void dump_sas_enclosure_device_status_change(struct MPT2_IOCTL_EVENTS *ev
 			evt->PhyBits);
 }
 
+static const char *sas_quiesce_reason_to_text(uint8_t reason)
+{
+	switch (reason) {
+		case MPI2_EVENT_SAS_QUIESCE_RC_STARTED: return "STARTED";
+		case MPI2_EVENT_SAS_QUIESCE_RC_COMPLETED: return "COMPLETED";
+	}
+
+	return "UNKNOWN";
+}
+
+static void dump_sas_quiesce(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_SAS_QUIESCE *evt = (void*)&event->data;
+
+	syslog(LOG_INFO, "SAS Quiesce: context=%u reason=%hu(%s) reserved1=%hu reserved2=%hu reserved3=%u",
+			event->context,
+			evt->ReasonCode, sas_quiesce_reason_to_text(evt->ReasonCode),
+			evt->Reserved1,
+			evt->Reserved2,
+			evt->Reserved3);
+}
+
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
 	switch (event->event) {
@@ -641,7 +663,7 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 			break;
 
 		case MPI2_EVENT_SAS_QUIESCE:
-			dump_name_only("SAS Queisce", event);
+			dump_sas_quiesce(event);
 			break;
 
 		case MPI2_EVENT_SAS_NOTIFY_PRIMITIVE:
