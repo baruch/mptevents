@@ -810,11 +810,11 @@ static int enable_events(int fd, int port)
 /* We have to read all the events and figure out which of them is new and which isn't */
 static int handle_events(int fd, int port, uint32_t *highest_context, int first_read)
 {
-	int ret;
-	struct mpt2_ioctl_eventreport {
+	struct {
 		struct mpt2_ioctl_header hdr;
 		struct MPT2_IOCTL_EVENTS event_data[MPT2SAS_CTL_EVENT_LOG_SIZE];
 	} events;
+	int ret;
 	int i;
 	uint32_t new_context = *highest_context;
 
