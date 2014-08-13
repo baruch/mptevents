@@ -585,12 +585,12 @@ static void dump_sas_topology_change_list(struct MPT2_IOCTL_EVENTS *event)
 	int i;
 	for (i = 0; i < evt->NumEntries; i++) {
 		MPI2_EVENT_SAS_TOPO_PHY_ENTRY *entry = &evt->PHY[i];
-		syslog(LOG_INFO, "SAS Topology Change List Entry (%d/%d): attached_dev_handle=%hx link_rate=%hhu(prev=%s,next=%s) phy_status=%hhu(%s)",
+		syslog(LOG_INFO, "SAS Topology Change List Entry (%d/%d): attached_dev_handle=%hx link_rate=%hhx(prev=%s,next=%s) phy_status=%hhu(%s)",
 				i+1, evt->NumEntries,
 				entry->AttachedDevHandle,
 				entry->LinkRate,
-				sas_topo_link_rate_to_text((entry->LinkRate & MPI2_EVENT_SAS_TOPO_LR_CURRENT_MASK) >> MPI2_EVENT_SAS_TOPO_LR_CURRENT_SHIFT),
 				sas_topo_link_rate_to_text((entry->LinkRate & MPI2_EVENT_SAS_TOPO_LR_PREV_MASK) >> MPI2_EVENT_SAS_TOPO_LR_PREV_SHIFT),
+				sas_topo_link_rate_to_text((entry->LinkRate & MPI2_EVENT_SAS_TOPO_LR_CURRENT_MASK) >> MPI2_EVENT_SAS_TOPO_LR_CURRENT_SHIFT),
 				entry->PhyStatus, sas_topo_phy_status_to_text(entry->PhyStatus));
 	}
 }
