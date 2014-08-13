@@ -533,6 +533,30 @@ static void dump_sas_topology_change_list(struct MPT2_IOCTL_EVENTS *event)
 	}
 }
 
+static const char *sas_enclosure_dev_status_change_reason_to_text(uint8_t reason)
+{
+	switch (reason) {
+		case MPI2_EVENT_SAS_ENCL_RC_ADDED: return "ADDED";
+		case MPI2_EVENT_SAS_ENCL_RC_NOT_RESPONDING: return "NOT_RESPONDING";
+	}
+
+	return "UNKNOWN";
+}
+
+static void dump_sas_enclosure_device_status_change(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_SAS_ENCL_DEV_STATUS_CHANGE *evt = (void*)&event->data;
+
+	syslog(LOG_INFO, "SAS Enclosure Device Status Change: context=%u enclosure_handle=%hx reason=%hu(%s) enclosure_logical_id=%"PRIx64" num_slots=%hu start_slot=%hu phy_bits=%x",
+			event->context,
+			evt->EnclosureHandle,
+			evt->ReasonCode, sas_enclosure_dev_status_change_reason_to_text(evt->ReasonCode),
+			evt->EnclosureLogicalID,
+			evt->NumSlots,
+			evt->StartSlot,
+			evt->PhyBits);
+}
+
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
 	switch (event->event) {
@@ -589,7 +613,7 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 			break;
 
 		case MPI2_EVENT_SAS_ENCL_DEVICE_STATUS_CHANGE:
-			dump_name_only("SAS Enclosure Device Status Change", event);
+			dump_sas_enclosure_device_status_change(event);
 			break;
 
 		case MPI2_EVENT_IR_VOLUME:
