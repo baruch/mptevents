@@ -268,7 +268,8 @@ static void dump_ir_config_change_list(struct MPT2_IOCTL_EVENTS *event)
 	int i;
 	for (i = 0; i < evt->NumElements; i++) {
 		MPI2_EVENT_IR_CONFIG_ELEMENT *elem = &evt->ConfigElement[i];
-		syslog(LOG_INFO, "IR Config Change List Element: flags=%hx(%s) vol_dev_handle=%hx reason=%hhu(%s) phys_disk_num=%hhu phys_disk_dev_handle=%hx",
+		syslog(LOG_INFO, "IR Config Change List Element (%d/%d): flags=%hx(%s) vol_dev_handle=%hx reason=%hhu(%s) phys_disk_num=%hhu phys_disk_dev_handle=%hx",
+				i+1, evt->NumElements,
 				elem->ElementFlags, ir_config_element_flag_to_text(elem->ElementFlags),
 				elem->VolDevHandle,
 				elem->ReasonCode, ir_config_element_reason_to_text(elem->ReasonCode),
@@ -525,7 +526,7 @@ static void dump_sas_topology_change_list(struct MPT2_IOCTL_EVENTS *event)
 	for (i = 0; i < evt->NumEntries; i++) {
 		MPI2_EVENT_SAS_TOPO_PHY_ENTRY *entry = &evt->PHY[i];
 		syslog(LOG_INFO, "SAS Topology Change List Entry (%d/%d): attached_dev_handle=%hx link_rate=%hhu(prev=%s,next=%s) phy_status=%hhu(%s)",
-				i, evt->NumEntries,
+				i+1, evt->NumEntries,
 				entry->AttachedDevHandle,
 				entry->LinkRate,
 				sas_topo_link_rate_to_text((entry->LinkRate & MPI2_EVENT_SAS_TOPO_LR_CURRENT_MASK) >> MPI2_EVENT_SAS_TOPO_LR_CURRENT_SHIFT),
