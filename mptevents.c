@@ -438,6 +438,101 @@ static void dump_sas_init_table_overflow(struct MPT2_IOCTL_EVENTS *event)
 			evt->SASAddress);
 }
 
+static const char *sas_topology_change_list_status_to_text(uint8_t status)
+{
+	switch (status) {
+		case MPI2_EVENT_SAS_TOPO_ES_NO_EXPANDER: return "NO_EXPANDER";
+		case MPI2_EVENT_SAS_TOPO_ES_ADDED: return "ADDED";
+		case MPI2_EVENT_SAS_TOPO_ES_NOT_RESPONDING: return "NOT_RESPONDING";
+		case MPI2_EVENT_SAS_TOPO_ES_RESPONDING: return "RESPONDING";
+		case MPI2_EVENT_SAS_TOPO_ES_DELAY_NOT_RESPONDING: return "DELAY_NOT_RESPONDING";
+	}
+
+	return "UNKNOWN";
+}
+
+static const char *sas_topo_link_rate_to_text(uint8_t link_rate)
+{
+	switch (link_rate) {
+		case MPI2_EVENT_SAS_TOPO_LR_UNKNOWN_LINK_RATE: return "UNKNOWN_LINK_RATE";
+		case MPI2_EVENT_SAS_TOPO_LR_PHY_DISABLED: return "PHY_DISABLED";
+		case MPI2_EVENT_SAS_TOPO_LR_NEGOTIATION_FAILED: return "NEGOTIATION_FAILED";
+		case MPI2_EVENT_SAS_TOPO_LR_SATA_OOB_COMPLETE: return "SATA_OOB_COMPLETE";
+		case MPI2_EVENT_SAS_TOPO_LR_PORT_SELECTOR: return "PORT_SELECTOR";
+		case MPI2_EVENT_SAS_TOPO_LR_SMP_RESET_IN_PROGRESS: return "SMP_RESET_IN_PROGRESS";
+		case MPI2_EVENT_SAS_TOPO_LR_UNSUPPORTED_PHY: return "UNSUPPORTED_PHY";
+		case MPI2_EVENT_SAS_TOPO_LR_RATE_1_5: return "RATE_1_5";
+		case MPI2_EVENT_SAS_TOPO_LR_RATE_3_0: return "RATE_3_0";
+		case MPI2_EVENT_SAS_TOPO_LR_RATE_6_0: return "RATE_6_0";
+	}
+
+	return "UNKNOWN";
+}
+
+static const char *sas_topo_phy_status_to_text(uint8_t status)
+{
+	static char text[256];
+	int i = 0;
+
+#define OUTPUT_FLAG(val, name) \
+	do { \
+		if (status & val) { \
+			if (i > 0) \
+				text[i++] = ','; \
+			i += sprintf(text+i, "%s", name); \
+		} \
+	} while (0)
+	OUTPUT_FLAG(MPI2_EVENT_SAS_TOPO_PHYSTATUS_VACANT, "PHYSTATUS_VACANT");
+	OUTPUT_FLAG(0x40, "UNKNOWN_40");
+	OUTPUT_FLAG(0x20, "UNKNOWN_20");
+	OUTPUT_FLAG(MPI2_EVENT_SAS_TOPO_PS_MULTIPLEX_CHANGE, "PS_MULTIPLEX_CHANGE");
+#undef OUTPUT_FLAG
+
+	const char *rc = "UNKNOWN";
+	switch (status & MPI2_EVENT_SAS_TOPO_RC_MASK) {
+		case MPI2_EVENT_SAS_TOPO_RC_TARG_ADDED: rc = "TARG_ADDED";
+		case MPI2_EVENT_SAS_TOPO_RC_TARG_NOT_RESPONDING: rc = "TARG_NOT_RESPONDING";
+		case MPI2_EVENT_SAS_TOPO_RC_PHY_CHANGED: rc = "PHY_CHANGED";
+		case MPI2_EVENT_SAS_TOPO_RC_NO_CHANGE: rc = "NO_CHANGE";
+		case MPI2_EVENT_SAS_TOPO_RC_DELAY_NOT_RESPONDING: rc = "DELAY_NOT_RESPONDING";
+	}
+
+	if (i > 0)
+		text[i++] = ',';
+	sprintf(text+i, "%s", rc);
+
+	return text;
+}
+
+static void dump_sas_topology_change_list(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_SAS_TOPOLOGY_CHANGE_LIST *evt = (void*)&event->data;
+
+	syslog(LOG_INFO, "SAS Topology Change List: context=%u enclosure_handle=%hx expander_dev_handle=%hx num_phys=%hu num_entries=%hu start_phy_num=%hu exp_status=%hu(%s), physical_port=%hu reserved1=%hu reserved2=%hu",
+			event->context,
+			evt->EnclosureHandle,
+			evt->ExpanderDevHandle,
+			evt->NumPhys,
+			evt->NumEntries,
+			evt->StartPhyNum,
+			evt->ExpStatus, sas_topology_change_list_status_to_text(evt->ExpStatus),
+			evt->PhysicalPort,
+			evt->Reserved1,
+			evt->Reserved2);
+
+	int i;
+	for (i = 0; i < evt->NumEntries; i++) {
+		MPI2_EVENT_SAS_TOPO_PHY_ENTRY *entry = &evt->PHY[i];
+		syslog(LOG_INFO, "SAS Topology Change List Entry (%d/%d): attached_dev_handle=%hx link_rate=%hu(prev=%s,next=%s) phy_status=%hu(%s)",
+				i, evt->NumEntries,
+				entry->AttachedDevHandle,
+				entry->LinkRate,
+				sas_topo_link_rate_to_text((entry->LinkRate & MPI2_EVENT_SAS_TOPO_LR_CURRENT_MASK) >> MPI2_EVENT_SAS_TOPO_LR_CURRENT_SHIFT),
+				sas_topo_link_rate_to_text((entry->LinkRate & MPI2_EVENT_SAS_TOPO_LR_PREV_MASK) >> MPI2_EVENT_SAS_TOPO_LR_PREV_SHIFT),
+				entry->PhyStatus, sas_topo_phy_status_to_text(entry->PhyStatus));
+	}
+}
+
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
 	switch (event->event) {
@@ -490,7 +585,7 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 			break;
 
 		case MPI2_EVENT_SAS_TOPOLOGY_CHANGE_LIST:
-			dump_name_only("SAS Topology Change List", event);
+			dump_sas_topology_change_list(event);
 			break;
 
 		case MPI2_EVENT_SAS_ENCL_DEVICE_STATUS_CHANGE:
