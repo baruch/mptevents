@@ -27,6 +27,7 @@ typedef uint64_t __le64;
 static int usage(const char *name)
 {
 	fprintf(stderr, "Missing MPT device name to open.\n\n");
+	fprintf(stderr, "mptevents %s", VERSION);
 	fprintf(stderr, "Usage:\n\t%s <dev>\n\tf.ex. %s /dev/mptctl\n\n", name, name);
 	return 1;
 }
