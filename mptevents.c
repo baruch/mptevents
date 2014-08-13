@@ -107,9 +107,9 @@ static int handle_events(int fd, int port, uint32_t *highest_context, int first_
 	int ret;
 
 	memset(&events, 0, sizeof(events));
-    events.hdr.ioc_number = port;
+	events.hdr.ioc_number = port;
 	events.hdr.port_number = 0;
-    events.hdr.max_data_size = sizeof(events);
+	events.hdr.max_data_size = sizeof(events);
 
 	ret = ioctl(fd, MPT2EVENTREPORT, &events);
 	if (ret < 0) {
