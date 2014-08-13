@@ -405,6 +405,28 @@ static void dump_sas_notify_primitive(struct MPT2_IOCTL_EVENTS *event)
 			evt->Reserved1);
 }
 
+static const char *sas_init_dev_status_reason_to_text(uint8_t reason)
+{
+	switch (reason) {
+		case MPI2_EVENT_SAS_INIT_RC_ADDED: return "ADDED";
+		case MPI2_EVENT_SAS_INIT_RC_NOT_RESPONDING: return "NOT_RESPONDING";
+	}
+
+	return "UNKNOWN";
+}
+
+static void dump_sas_init_dev_status_change(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_SAS_INIT_DEV_STATUS_CHANGE *evt = (void*)&event->data;
+
+	syslog(LOG_INFO, "SAS Init Dev Status Change: context=%u reason=%hd(%s) phys_port=%hu dev_handle=%hu sas_address=%"PRIx64,
+			event->context,
+			evt->ReasonCode, sas_init_dev_status_reason_to_text(evt->ReasonCode),
+			evt->PhysicalPort,
+			evt->DevHandle,
+			evt->SASAddress);
+}
+
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
 	switch (event->event) {
@@ -449,7 +471,7 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 			break;
 
 		case MPI2_EVENT_SAS_INIT_DEVICE_STATUS_CHANGE:
-			dump_name_only("SAS Init Device Status Change", event);
+			dump_sas_init_dev_status_change(event);
 			break;
 
 		case MPI2_EVENT_SAS_INIT_TABLE_OVERFLOW:
