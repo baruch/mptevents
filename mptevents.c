@@ -890,6 +890,16 @@ static int handle_events(int fd, int port, uint32_t *highest_context, int first_
 		return -1;
 	}
 
+	if (opt_debug) {
+		int debug_fd = open("/tmp/mptevents.debug.log", O_WRONLY|O_CREAT|O_APPEND, 0600);
+		if (debug_fd >= 0) {
+			uint32_t sz = sizeof(events);
+			write(debug_fd, &sz, sizeof(sz));
+			write(debug_fd, &events, sz);
+			close(debug_fd);
+		}
+	}
+
 	for (i = 0; i < MPT2SAS_CTL_EVENT_LOG_SIZE; i++) {
 		struct MPT2_IOCTL_EVENTS *event = &events.event_data[i];
 
