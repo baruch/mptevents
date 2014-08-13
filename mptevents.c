@@ -995,18 +995,18 @@ int main(int argc, char **argv)
 		return 1;
 
 	openlog("mptevents", LOG_PERROR, LOG_DAEMON);
-	syslog(LOG_INFO, "mptevents starting");
+	syslog(LOG_INFO, "mptevents starting for device %s", devname);
 
 	attempts = 10;
 
 	do {
-		int fd = open(argv[1], O_RDWR);
+		int fd = open(devname, O_RDWR);
 		if (fd >= 0) {
 			monitor_mpt(fd, port);
 			close(fd);
 			sleep(30);
 		} else {
-			syslog(LOG_INFO, "Failed to open mpt device %s: %d (%m)", argv[1], errno);
+			syslog(LOG_INFO, "Failed to open mpt device %s: %d (%m)", devname, errno);
 			sleep(30);
 			attempts--;
 		}
