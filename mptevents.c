@@ -879,7 +879,12 @@ static void monitor_mpt(int fd, int port)
 	}
 
 	// First run to get the context
-	handle_events(fd, port, &last_context, 1);
+	ret = handle_events(fd, port, &last_context, 1);
+	if (ret < 0) {
+		syslog(LOG_ERR, "Error while waiting for first mpt events: %d (%m)", errno);
+		close(poll_fd);
+		return;
+	}
 
 	// Now we run the normal loop with the received context
 	do {
