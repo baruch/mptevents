@@ -20,6 +20,7 @@ typedef uint64_t __le64;
 
 #include "mpi/mpi2_type.h"
 #include "mpi/mpi2.h"
+#include "mpi/mpi2_cnfg.h"
 #include "mpi/mpi2_ioc.h"
 #include "mpt2sas_ctl.h"
 
@@ -579,6 +580,106 @@ static void dump_sas_quiesce(struct MPT2_IOCTL_EVENTS *event)
 			evt->Reserved3);
 }
 
+static const char *phy_event_code_to_text(uint8_t code)
+{
+	switch (code) {
+		case MPI2_SASPHY3_EVENT_CODE_NO_EVENT: return "NO_EVENT";
+		case MPI2_SASPHY3_EVENT_CODE_INVALID_DWORD: return "INVALID_DWORD";
+		case MPI2_SASPHY3_EVENT_CODE_RUNNING_DISPARITY_ERROR: return "RUNNING_DISPARITY_ERROR";
+		case MPI2_SASPHY3_EVENT_CODE_LOSS_DWORD_SYNC: return "LOSS_DWORD_SYNC";
+		case MPI2_SASPHY3_EVENT_CODE_PHY_RESET_PROBLEM: return "PHY_RESET_PROBLEM";
+		case MPI2_SASPHY3_EVENT_CODE_ELASTICITY_BUF_OVERFLOW: return "ELASTICITY_BUF_OVERFLOW";
+		case MPI2_SASPHY3_EVENT_CODE_RX_ERROR: return "RX_ERROR";
+		case MPI2_SASPHY3_EVENT_CODE_RX_ADDR_FRAME_ERROR: return "RX_ADDR_FRAME_ERROR";
+		case MPI2_SASPHY3_EVENT_CODE_TX_AC_OPEN_REJECT: return "TX_AC_OPEN_REJECT";
+		case MPI2_SASPHY3_EVENT_CODE_RX_AC_OPEN_REJECT: return "RX_AC_OPEN_REJECT";
+		case MPI2_SASPHY3_EVENT_CODE_TX_RC_OPEN_REJECT: return "TX_RC_OPEN_REJECT";
+		case MPI2_SASPHY3_EVENT_CODE_RX_RC_OPEN_REJECT: return "RX_RC_OPEN_REJECT";
+		case MPI2_SASPHY3_EVENT_CODE_RX_AIP_PARTIAL_WAITING_ON: return "RX_AIP_PARTIAL_WAITING_ON";
+		case MPI2_SASPHY3_EVENT_CODE_RX_AIP_CONNECT_WAITING_ON: return "RX_AIP_CONNECT_WAITING_ON";
+		case MPI2_SASPHY3_EVENT_CODE_TX_BREAK: return "TX_BREAK";
+		case MPI2_SASPHY3_EVENT_CODE_RX_BREAK: return "RX_BREAK";
+		case MPI2_SASPHY3_EVENT_CODE_BREAK_TIMEOUT: return "BREAK_TIMEOUT";
+		case MPI2_SASPHY3_EVENT_CODE_CONNECTION: return "CONNECTION";
+		case MPI2_SASPHY3_EVENT_CODE_PEAKTX_PATHWAY_BLOCKED: return "PEAKTX_PATHWAY_BLOCKED";
+		case MPI2_SASPHY3_EVENT_CODE_PEAKTX_ARB_WAIT_TIME: return "PEAKTX_ARB_WAIT_TIME";
+		case MPI2_SASPHY3_EVENT_CODE_PEAK_ARB_WAIT_TIME: return "PEAK_ARB_WAIT_TIME";
+		case MPI2_SASPHY3_EVENT_CODE_PEAK_CONNECT_TIME: return "PEAK_CONNECT_TIME";
+		case MPI2_SASPHY3_EVENT_CODE_TX_SSP_FRAMES: return "TX_SSP_FRAMES";
+		case MPI2_SASPHY3_EVENT_CODE_RX_SSP_FRAMES: return "RX_SSP_FRAMES";
+		case MPI2_SASPHY3_EVENT_CODE_TX_SSP_ERROR_FRAMES: return "TX_SSP_ERROR_FRAMES";
+		case MPI2_SASPHY3_EVENT_CODE_RX_SSP_ERROR_FRAMES: return "RX_SSP_ERROR_FRAMES";
+		case MPI2_SASPHY3_EVENT_CODE_TX_CREDIT_BLOCKED: return "TX_CREDIT_BLOCKED";
+		case MPI2_SASPHY3_EVENT_CODE_RX_CREDIT_BLOCKED: return "RX_CREDIT_BLOCKED";
+		case MPI2_SASPHY3_EVENT_CODE_TX_SATA_FRAMES: return "TX_SATA_FRAMES";
+		case MPI2_SASPHY3_EVENT_CODE_RX_SATA_FRAMES: return "RX_SATA_FRAMES";
+		case MPI2_SASPHY3_EVENT_CODE_SATA_OVERFLOW: return "SATA_OVERFLOW";
+		case MPI2_SASPHY3_EVENT_CODE_TX_SMP_FRAMES: return "TX_SMP_FRAMES";
+		case MPI2_SASPHY3_EVENT_CODE_RX_SMP_FRAMES: return "RX_SMP_FRAMES";
+		case MPI2_SASPHY3_EVENT_CODE_RX_SMP_ERROR_FRAMES: return "RX_SMP_ERROR_FRAMES";
+		case MPI2_SASPHY3_EVENT_CODE_HOTPLUG_TIMEOUT: return "HOTPLUG_TIMEOUT";
+		case MPI2_SASPHY3_EVENT_CODE_MISALIGNED_MUX_PRIMITIVE: return "MISALIGNED_MUX_PRIMITIVE";
+		case MPI2_SASPHY3_EVENT_CODE_RX_AIP: return "RX_AIP";
+	}
+
+	return "UNKNOWN";
+}
+
+static const char *counter_type_to_text(uint8_t type)
+{
+	switch (type) {
+		case MPI2_SASPHY3_COUNTER_TYPE_WRAPPING: return "WRAPPING";
+		case MPI2_SASPHY3_COUNTER_TYPE_SATURATING: return "SATURATING";
+		case MPI2_SASPHY3_COUNTER_TYPE_PEAK_VALUE: return "PEAK_VALUE";
+	}
+
+	return "UNKNOWN";
+}
+
+static const char *time_units_to_text(uint8_t unit)
+{
+	switch (unit) {
+		case MPI2_SASPHY3_TIME_UNITS_10_MICROSECONDS: return "10_MICROSECONDS";
+		case MPI2_SASPHY3_TIME_UNITS_100_MICROSECONDS: return "100_MICROSECONDS";
+		case MPI2_SASPHY3_TIME_UNITS_1_MILLISECOND: return "1_MILLISECOND";
+		case MPI2_SASPHY3_TIME_UNITS_10_MILLISECONDS: return "10_MILLISECONDS";
+	}
+
+	return "UNKNOWN";
+}
+
+static const char *threshold_flags_to_text(uint8_t flags)
+{
+	switch (flags) {
+		case MPI2_SASPHY3_TFLAGS_PHY_RESET: return "PHY_RESET";
+		case MPI2_SASPHY3_TFLAGS_EVENT_NOTIFY: return "EVENT_NOTIFY";
+		case MPI2_SASPHY3_TFLAGS_EVENT_NOTIFY|MPI2_SASPHY3_TFLAGS_PHY_RESET: return "PHY_RESET,EVENT_NOTIFY";
+	}
+
+	return "UNKNOWN";
+}
+
+static void dump_sas_phy_counter(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_SAS_PHY_COUNTER *evt = (void*)&event->data;
+
+	syslog(LOG_INFO, "SAS Phy Counter: context=%u timestamp=%"PRIu64" phy_event_code=%hu(%s) phy_num=%hu phy_event_info=%hx counter_type=%hu(%s) threshold_window=%hu time_units=%hu(%s) event_threshold=%u threshold_flags=%hx(%s) reserved1=%u reserved2=%hu reserved3=%hu reserved4=%hu",
+			event->context,
+			evt->TimeStamp,
+			evt->PhyEventCode, phy_event_code_to_text(evt->PhyEventCode),
+			evt->PhyNum,
+			evt->PhyEventInfo,
+			evt->CounterType, counter_type_to_text(evt->CounterType),
+			evt->ThresholdWindow,
+			evt->TimeUnits, time_units_to_text(evt->TimeUnits),
+			evt->EventThreshold,
+			evt->ThresholdFlags, threshold_flags_to_text(evt->ThresholdFlags),
+			evt->Reserved1,
+			evt->Reserved2,
+			evt->Reserved3,
+			evt->Reserved4);
+}
+
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
 	switch (event->event) {
@@ -655,7 +756,7 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 			break;
 
 		case MPI2_EVENT_SAS_PHY_COUNTER:
-			dump_name_only("SAS Phy Counter", event);
+			dump_sas_phy_counter(event);
 			break;
 
 		case MPI2_EVENT_HOST_BASED_DISCOVERY_PHY:
