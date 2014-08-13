@@ -886,6 +886,13 @@ static int handle_events(int fd, int port, uint32_t *highest_context, int first_
 
 	ret = ioctl(fd, MPT2EVENTREPORT, &events);
 	if (ret < 0) {
+		if (errno == EINTR)
+			return 0;
+		if (errno == EAGAIN) {
+			// mpt2sas returns EAGAIN when the controller is busy, avoid a busy loop in that case
+			sleep(1);
+			return 0;
+		}
 		syslog(LOG_ERR, "Error while reading mpt events: %d (%m)", errno);
 		return -1;
 	}
