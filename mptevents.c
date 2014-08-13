@@ -427,6 +427,17 @@ static void dump_sas_init_dev_status_change(struct MPT2_IOCTL_EVENTS *event)
 			evt->SASAddress);
 }
 
+static void dump_sas_init_table_overflow(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_SAS_INIT_TABLE_OVERFLOW *evt = (void*)&event->data;
+
+	syslog(LOG_INFO, "SAS Init Table Overflow: context=%u max_init=%hu current_init=%hu sas_address=%"PRIx64,
+			event->context,
+			evt->MaxInit,
+			evt->CurrentInit,
+			evt->SASAddress);
+}
+
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
 	switch (event->event) {
@@ -475,7 +486,7 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 			break;
 
 		case MPI2_EVENT_SAS_INIT_TABLE_OVERFLOW:
-			dump_name_only("SAS Init Table Overflow", event);
+			dump_sas_init_table_overflow(event);
 			break;
 
 		case MPI2_EVENT_SAS_TOPOLOGY_CHANGE_LIST:
