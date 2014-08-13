@@ -206,6 +206,7 @@ int main(int argc, char **argv)
 
 	openlog("mptevents", LOG_PERROR, LOG_DAEMON);
 	syslog(LOG_INFO, "mptevents starting for device %s", devname);
+	my_syslog = syslog;
 
 	attempts = 10;
 

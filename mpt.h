@@ -23,4 +23,6 @@ struct mpt_events {
 
 void dump_all_events(struct mpt_events *events, uint32_t *highest_context, int first_read);
 
+extern void (*my_syslog)(int priority, const char *format, ...);
+
 #endif

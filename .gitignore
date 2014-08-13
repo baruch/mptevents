@@ -1,4 +1,5 @@
 mptevents
+mptevents_offline
 *.o
 .*.swp
-
+.gdb_history

@@ -4,6 +4,8 @@
 
 #include "mpt.h"
 
+void (*my_syslog)(int priority, const char *format, ...);
+
 static inline char nibble_to_hex(char nibble)
 {
 	nibble &= 0xF;
@@ -63,14 +65,14 @@ static void dump_sas_device_status_change(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_SAS_DEVICE_STATUS_CHANGE *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "SAS Device Status Change: context=%u tag=%04x rc=%u(%s) port=%u asc=%02X ascq=%02X handle=%04x reserved2=%u SASAddress=%"PRIx64, event->context, evt->TaskTag, evt->ReasonCode, reason_code_to_text(evt->ReasonCode), evt->PhysicalPort, evt->ASC, evt->ASCQ, evt->DevHandle, evt->Reserved2, evt->SASAddress);
+	my_syslog(LOG_INFO, "SAS Device Status Change: context=%u tag=%04x rc=%u(%s) port=%u asc=%02X ascq=%02X handle=%04x reserved2=%u SASAddress=%"PRIx64, event->context, evt->TaskTag, evt->ReasonCode, reason_code_to_text(evt->ReasonCode), evt->PhysicalPort, evt->ASC, evt->ASCQ, evt->DevHandle, evt->Reserved2, evt->SASAddress);
 }
 
 static void dump_log_data(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_LOG_ENTRY_ADDED *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "Log Entry Added: context=%u timestamp=%"PRIu64" reserved1=%u seq=%u entry_qualifier=%u vp_id=%u vf_id=%u reserved2=%u", event->context, evt->TimeStamp, evt->Reserved1, evt->LogSequence, evt->LogEntryQualifier, evt->VP_ID, evt->VF_ID, evt->Reserved2);
+	my_syslog(LOG_INFO, "Log Entry Added: context=%u timestamp=%"PRIu64" reserved1=%u seq=%u entry_qualifier=%u vp_id=%u vf_id=%u reserved2=%u", event->context, evt->TimeStamp, evt->Reserved1, evt->LogSequence, evt->LogEntryQualifier, evt->VP_ID, evt->VF_ID, evt->Reserved2);
 	// TODO: Parse or at least hexdump the LogData
 }
 
@@ -78,7 +80,7 @@ static void dump_gpio_interrupt(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_GPIO_INTERRUPT *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "GPIO Interrupt: context=%u gpionum=%u reserved1=%u reserved2=%u", event->context, evt->GPIONum, evt->Reserved1, evt->Reserved2);
+	my_syslog(LOG_INFO, "GPIO Interrupt: context=%u gpionum=%u reserved1=%u reserved2=%u", event->context, evt->GPIONum, evt->Reserved1, evt->Reserved2);
 }
 
 static void dump_name_only(const char *name, struct MPT2_IOCTL_EVENTS *event)
@@ -86,21 +88,21 @@ static void dump_name_only(const char *name, struct MPT2_IOCTL_EVENTS *event)
 	char hexbuf[512];
 
 	buf2hex((char *)event->data, sizeof(event->data), hexbuf, sizeof(hexbuf));
-	syslog(LOG_INFO, "%s: event=%u context=%u buf=%s", name, event->event, event->context, hexbuf);
+	my_syslog(LOG_INFO, "%s: event=%u context=%u buf=%s", name, event->event, event->context, hexbuf);
 }
 
 static void dump_temperature_threshold(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_TEMPERATURE *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "Temperature Threshold: context=%u status=%04x sensornum=%u current_temp=%u reversed1=%u reserved2=%u reserved3=%u reserved4=%u", event->context, evt->Status, evt->SensorNum, evt->CurrentTemperature, evt->Reserved1, evt->Reserved2, evt->Reserved3, evt->Reserved4);
+	my_syslog(LOG_INFO, "Temperature Threshold: context=%u status=%04x sensornum=%u current_temp=%u reversed1=%u reserved2=%u reserved3=%u reserved4=%u", event->context, evt->Status, evt->SensorNum, evt->CurrentTemperature, evt->Reserved1, evt->Reserved2, evt->Reserved3, evt->Reserved4);
 }
 
 static void dump_hard_reset_received(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_HARD_RESET_RECEIVED *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "Hard Reset Received: context=%u port=%u reserved1=%u reserved2=%u",
+	my_syslog(LOG_INFO, "Hard Reset Received: context=%u port=%u reserved1=%u reserved2=%u",
 			event->context,
 			evt->Port,
 			evt->Reserved1,
@@ -111,7 +113,7 @@ static void dump_task_set_full(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_TASK_SET_FULL *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "Task Set Full: context=%u dev_handle=%hx current_depth=%hu", event->context, evt->DevHandle, evt->CurrentDepth);
+	my_syslog(LOG_INFO, "Task Set Full: context=%u dev_handle=%hx current_depth=%hu", event->context, evt->DevHandle, evt->CurrentDepth);
 }
 
 static const char *raid_op_to_text(uint8_t raid_op)
@@ -136,7 +138,7 @@ static void dump_ir_operation_status(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_IR_OPERATION_STATUS *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "IR Operation Status: context=%u vol_dev_handle=%hx raid_op=%hhu(%s) percent=%hhu elapsed_sec=%u reserved1=%hu reserved2=%hu",
+	my_syslog(LOG_INFO, "IR Operation Status: context=%u vol_dev_handle=%hx raid_op=%hhu(%s) percent=%hhu elapsed_sec=%u reserved1=%hu reserved2=%hu",
 			event->context,
 			evt->VolDevHandle,
 			evt->RAIDOperation, raid_op_to_text(evt->RAIDOperation),
@@ -161,7 +163,7 @@ static void dump_ir_volume(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_IR_VOLUME *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "IR Volume: context=%u vol_dev_handle=%hx reason=%hhu(%s) new_value=%u prev_value=%u reserved1=%hhu",
+	my_syslog(LOG_INFO, "IR Volume: context=%u vol_dev_handle=%hx reason=%hhu(%s) new_value=%u prev_value=%u reserved1=%hhu",
 			event->context,
 			evt->VolDevHandle,
 			evt->ReasonCode, ir_volume_code_to_text(evt->ReasonCode),
@@ -185,7 +187,7 @@ static void dump_ir_physical_disk(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_IR_PHYSICAL_DISK *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "IR Physical Disk: context=%u reason=%hhu(%s) phys_disk_num=%hhu phys_disk_dev_handle=%hx slot=%hu enclosure_handle=%hu new_value=%u prev_value=%u reserved1=%hu reserved2=%hu",
+	my_syslog(LOG_INFO, "IR Physical Disk: context=%u reason=%hhu(%s) phys_disk_num=%hhu phys_disk_dev_handle=%hx slot=%hu enclosure_handle=%hu new_value=%u prev_value=%u reserved1=%hu reserved2=%hu",
 			event->context,
 			evt->ReasonCode, ir_physical_disk_rc_to_text(evt->ReasonCode),
 			evt->PhysDiskNum,
@@ -230,7 +232,7 @@ static void dump_ir_config_change_list(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_IR_CONFIG_CHANGE_LIST *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "IR Config Change List: context=%u num_elements=%hhu config_num=%hhu flags=%x reserved1=%hhu reserved2=%hhu",
+	my_syslog(LOG_INFO, "IR Config Change List: context=%u num_elements=%hhu config_num=%hhu flags=%x reserved1=%hhu reserved2=%hhu",
 			event->context,
 			evt->NumElements,
 			evt->ConfigNum,
@@ -241,7 +243,7 @@ static void dump_ir_config_change_list(struct MPT2_IOCTL_EVENTS *event)
 	int i;
 	for (i = 0; i < evt->NumElements; i++) {
 		MPI2_EVENT_IR_CONFIG_ELEMENT *elem = &evt->ConfigElement[i];
-		syslog(LOG_INFO, "IR Config Change List Element (%d/%d): flags=%hx(%s) vol_dev_handle=%hx reason=%hhu(%s) phys_disk_num=%hhu phys_disk_dev_handle=%hx",
+		my_syslog(LOG_INFO, "IR Config Change List Element (%d/%d): flags=%hx(%s) vol_dev_handle=%hx reason=%hhu(%s) phys_disk_num=%hhu phys_disk_dev_handle=%hx",
 				i+1, evt->NumElements,
 				elem->ElementFlags, ir_config_element_flag_to_text(elem->ElementFlags),
 				elem->VolDevHandle,
@@ -319,7 +321,7 @@ static void dump_sas_discovery(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_SAS_DISCOVERY *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "SAS Discovery: context=%u flags=%02hhx(%s) reason=%hhx(%s) physical_port=%hhx discovery_status=%x(%s) reserved1=%hhx",
+	my_syslog(LOG_INFO, "SAS Discovery: context=%u flags=%02hhx(%s) reason=%hhx(%s) physical_port=%hhx discovery_status=%x(%s) reserved1=%hhx",
 			event->context,
 			evt->Flags, sas_discovery_flags_to_text(evt->Flags),
 			evt->ReasonCode, sas_discovery_reason_to_text(evt->ReasonCode),
@@ -348,7 +350,7 @@ static void dump_sas_broadcast_primitive(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_SAS_BROADCAST_PRIMITIVE *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "SAS Broadcast Primitive: context=%u phy_num=%hhu port=%hhu port_width=%hhu primitive=%hhu(%s)",
+	my_syslog(LOG_INFO, "SAS Broadcast Primitive: context=%u phy_num=%hhu port=%hhu port_width=%hhu primitive=%hhu(%s)",
 			event->context,
 			evt->PhyNum,
 			evt->Port,
@@ -372,7 +374,7 @@ static void dump_sas_notify_primitive(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_SAS_NOTIFY_PRIMITIVE *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "SAS Notify Primitive: context=%u phy_num=%hhu port=%hhu primitive=%hhu(%s) reserved1=%hhx",
+	my_syslog(LOG_INFO, "SAS Notify Primitive: context=%u phy_num=%hhu port=%hhu primitive=%hhu(%s) reserved1=%hhx",
 			event->context,
 			evt->PhyNum,
 			evt->Port,
@@ -394,7 +396,7 @@ static void dump_sas_init_dev_status_change(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_SAS_INIT_DEV_STATUS_CHANGE *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "SAS Init Dev Status Change: context=%u reason=%hhd(%s) phys_port=%hhu dev_handle=%hu sas_address=%"PRIx64,
+	my_syslog(LOG_INFO, "SAS Init Dev Status Change: context=%u reason=%hhd(%s) phys_port=%hhu dev_handle=%hu sas_address=%"PRIx64,
 			event->context,
 			evt->ReasonCode, sas_init_dev_status_reason_to_text(evt->ReasonCode),
 			evt->PhysicalPort,
@@ -406,7 +408,7 @@ static void dump_sas_init_table_overflow(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_SAS_INIT_TABLE_OVERFLOW *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "SAS Init Table Overflow: context=%u max_init=%hu current_init=%hu sas_address=%"PRIx64,
+	my_syslog(LOG_INFO, "SAS Init Table Overflow: context=%u max_init=%hu current_init=%hu sas_address=%"PRIx64,
 			event->context,
 			evt->MaxInit,
 			evt->CurrentInit,
@@ -483,7 +485,7 @@ static void dump_sas_topology_change_list(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_SAS_TOPOLOGY_CHANGE_LIST *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "SAS Topology Change List: context=%u enclosure_handle=%hx expander_dev_handle=%hx num_phys=%hhu num_entries=%hhu start_phy_num=%hhu exp_status=%hhu(%s) physical_port=%hhu reserved1=%hhu reserved2=%hu",
+	my_syslog(LOG_INFO, "SAS Topology Change List: context=%u enclosure_handle=%hx expander_dev_handle=%hx num_phys=%hhu num_entries=%hhu start_phy_num=%hhu exp_status=%hhu(%s) physical_port=%hhu reserved1=%hhu reserved2=%hu",
 			event->context,
 			evt->EnclosureHandle,
 			evt->ExpanderDevHandle,
@@ -498,7 +500,7 @@ static void dump_sas_topology_change_list(struct MPT2_IOCTL_EVENTS *event)
 	int i;
 	for (i = 0; i < evt->NumEntries; i++) {
 		MPI2_EVENT_SAS_TOPO_PHY_ENTRY *entry = &evt->PHY[i];
-		syslog(LOG_INFO, "SAS Topology Change List Entry (%d/%d): attached_dev_handle=%hx link_rate=%hhx(prev=%s,next=%s) phy_status=%hhu(%s)",
+		my_syslog(LOG_INFO, "SAS Topology Change List Entry (%d/%d): attached_dev_handle=%hx link_rate=%hhx(prev=%s,next=%s) phy_status=%hhu(%s)",
 				i+1, evt->NumEntries,
 				entry->AttachedDevHandle,
 				entry->LinkRate,
@@ -522,7 +524,7 @@ static void dump_sas_enclosure_device_status_change(struct MPT2_IOCTL_EVENTS *ev
 {
 	MPI2_EVENT_DATA_SAS_ENCL_DEV_STATUS_CHANGE *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "SAS Enclosure Device Status Change: context=%u enclosure_handle=%hx reason=%hhu(%s) enclosure_logical_id=%"PRIx64" num_slots=%hu start_slot=%hu phy_bits=%x",
+	my_syslog(LOG_INFO, "SAS Enclosure Device Status Change: context=%u enclosure_handle=%hx reason=%hhu(%s) enclosure_logical_id=%"PRIx64" num_slots=%hu start_slot=%hu phy_bits=%x",
 			event->context,
 			evt->EnclosureHandle,
 			evt->ReasonCode, sas_enclosure_dev_status_change_reason_to_text(evt->ReasonCode),
@@ -546,7 +548,7 @@ static void dump_sas_quiesce(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_SAS_QUIESCE *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "SAS Quiesce: context=%u reason=%hhu(%s) reserved1=%hhu reserved2=%hu reserved3=%u",
+	my_syslog(LOG_INFO, "SAS Quiesce: context=%u reason=%hhu(%s) reserved1=%hhu reserved2=%hu reserved3=%u",
 			event->context,
 			evt->ReasonCode, sas_quiesce_reason_to_text(evt->ReasonCode),
 			evt->Reserved1,
@@ -637,7 +639,7 @@ static void dump_sas_phy_counter(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_SAS_PHY_COUNTER *evt = (void*)&event->data;
 
-	syslog(LOG_INFO, "SAS Phy Counter: context=%u timestamp=%"PRIu64" phy_event_code=%hhu(%s) phy_num=%hhu phy_event_info=%x counter_type=%hhu(%s) threshold_window=%hhu time_units=%hhu(%s) event_threshold=%u threshold_flags=%hx(%s) reserved1=%u reserved2=%hu reserved3=%hhu reserved4=%hu",
+	my_syslog(LOG_INFO, "SAS Phy Counter: context=%u timestamp=%"PRIu64" phy_event_code=%hhu(%s) phy_num=%hhu phy_event_info=%x counter_type=%hhu(%s) threshold_window=%hhu time_units=%hhu(%s) event_threshold=%u threshold_flags=%hx(%s) reserved1=%u reserved2=%hu reserved3=%hhu reserved4=%hu",
 			event->context,
 			evt->TimeStamp,
 			evt->PhyEventCode, phy_event_code_to_text(evt->PhyEventCode),
