@@ -10,6 +10,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <getopt.h>
+
+static int opt_debug;
 
 typedef uint8_t u8;
 typedef uint16_t __le16;
@@ -26,10 +29,66 @@ typedef uint64_t __le64;
 
 static int usage(const char *name)
 {
-	fprintf(stderr, "Missing MPT device name to open.\n\n");
-	fprintf(stderr, "mptevents %s", VERSION);
+	fprintf(stderr, "\nmptevents %s\n", VERSION);
 	fprintf(stderr, "Usage:\n\t%s <dev>\n\tf.ex. %s /dev/mptctl\n\n", name, name);
 	return 1;
+}
+
+static const char *parse_opts(int argc, char **argv)
+{
+	int c;
+	int opt_help = 0;
+
+	while (1) {
+		//int this_option_optind = optind ? optind : 1;
+		int option_index = 0;
+		static struct option long_options[] = {
+			{"debug",   no_argument,       0,  'd' },
+			{"help",    no_argument,       0,  'h' },
+			{0,         0,                 0,  0 }
+		};
+
+		c = getopt_long(argc, argv, "dh",
+				long_options, &option_index);
+		if (c == -1)
+			break;
+
+		switch (c) {
+			case 0:
+				printf("long opt?\n");
+				break;
+
+			case 'd':
+				opt_debug = 1;
+				break;
+
+			case 'h':
+				opt_help = 1;
+				break;
+
+			default:
+				printf("?? getopt returned character code 0%o ??\n", c);
+		}
+	}
+
+	if (opt_help) {
+		usage(argv[0]);
+		return NULL;
+	}
+
+	if (optind == argc) {
+		fprintf(stderr, "Missing device name argument\n");
+		usage(argv[0]);
+		return NULL;
+	}
+
+	if (optind != argc-1) {
+		fprintf(stderr, "Too many devices given, can only monitor once!\n");
+		usage(argv[0]);
+		return NULL;
+	}
+
+	return argv[optind];
 }
 
 static inline char nibble_to_hex(char nibble)
@@ -912,10 +971,11 @@ int main(int argc, char **argv)
 {
 	int attempts;
 	int port = 0;
+	const char *devname;
 
-	if (argc != 2 || argv[1][0] == '-') {
-		return usage(argv[0]);
-	}
+	devname = parse_opts(argc, argv);
+	if (devname == NULL)
+		return 1;
 
 	openlog("mptevents", LOG_PERROR, LOG_DAEMON);
 	syslog(LOG_INFO, "mptevents starting");
