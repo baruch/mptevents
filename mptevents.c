@@ -215,12 +215,11 @@ int main(int argc, char **argv)
 		if (fd >= 0) {
 			monitor_mpt(fd, port);
 			close(fd);
-			sleep(30);
 		} else {
 			syslog(LOG_INFO, "Failed to open mpt device %s: %d (%m)", devname, errno);
-			sleep(30);
 			attempts--;
 		}
+		sleep(30);
 	} while (attempts > 0);
 
 	syslog(LOG_INFO, "mptevents stopping");
