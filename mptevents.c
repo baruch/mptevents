@@ -913,7 +913,7 @@ int main(int argc, char **argv)
 	int attempts;
 	int port = 0;
 
-	if (argc != 2) {
+	if (argc != 2 || argv[1][0] == '-') {
 		return usage(argv[0]);
 	}
 
