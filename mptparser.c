@@ -441,6 +441,7 @@ static const char *sas_topo_link_rate_to_text(uint8_t link_rate)
 		case MPI2_EVENT_SAS_TOPO_LR_RATE_1_5: return "RATE_1_5";
 		case MPI2_EVENT_SAS_TOPO_LR_RATE_3_0: return "RATE_3_0";
 		case MPI2_EVENT_SAS_TOPO_LR_RATE_6_0: return "RATE_6_0";
+		case MPI25_EVENT_SAS_TOPO_LR_RATE_12_0: return "RATE_12_0";
 	}
 
 	return "UNKNOWN";
