@@ -274,7 +274,7 @@ typedef struct _MPI2_IOC_FACTS_REPLY
     U32                     IOCCapabilities;                /* 0x1C */
     MPI2_VERSION_UNION      FWVersion;                      /* 0x20 */
     U16                     IOCRequestFrameSize;            /* 0x24 */
-    U16                     Reserved3;                      /* 0x26 */
+	U16 IOCMaxChainSegmentSize;	/*0x26 */
     U16                     MaxInitiators;                  /* 0x28 */
     U16                     MaxTargets;                     /* 0x2A */
     U16                     MaxSasExpanders;                /* 0x2C */
@@ -325,6 +325,7 @@ typedef struct _MPI2_IOC_FACTS_REPLY
 
 /* IOCCapabilities */
 #define MPI2_IOCFACTS_CAPABILITY_RDPQ_ARRAY_CAPABLE     (0x00040000)
+#define MPI25_IOCFACTS_CAPABILITY_FAST_PATH_CAPABLE     (0x00020000)
 #define MPI2_IOCFACTS_CAPABILITY_HOST_BASED_DISCOVERY   (0x00010000)
 #define MPI2_IOCFACTS_CAPABILITY_MSI_X_INDEX            (0x00008000)
 #define MPI2_IOCFACTS_CAPABILITY_RAID_ACCELERATOR       (0x00004000)
@@ -515,6 +516,7 @@ typedef struct _MPI2_EVENT_NOTIFICATION_REPLY
 #define MPI2_EVENT_SAS_NOTIFY_PRIMITIVE             (0x0026)
 #define MPI2_EVENT_TEMP_THRESHOLD                   (0x0027)
 #define MPI2_EVENT_HOST_MESSAGE                     (0x0028)
+#define MPI2_EVENT_POWER_PERFORMANCE_CHANGE         (0x0029)
 #define MPI2_EVENT_MIN_PRODUCT_SPECIFIC             (0x006E)
 #define MPI2_EVENT_MAX_PRODUCT_SPECIFIC             (0x007F)
 
@@ -579,6 +581,28 @@ typedef struct _MPI2_EVENT_DATA_HOST_MESSAGE {
 } MPI2_EVENT_DATA_HOST_MESSAGE, MPI2_POINTER PTR_MPI2_EVENT_DATA_HOST_MESSAGE,
 Mpi2EventDataHostMessage_t, MPI2_POINTER pMpi2EventDataHostMessage_t;
 
+typedef struct _MPI2_EVENT_DATA_POWER_PERF_CHANGE {
+	U8 CurrentPowerMode;	/*0x00 */
+	U8 PreviousPowerMode;	/*0x01 */
+	U16 Reserved1;		/*0x02 */
+} MPI2_EVENT_DATA_POWER_PERF_CHANGE,
+	*PTR_MPI2_EVENT_DATA_POWER_PERF_CHANGE,
+	Mpi2EventDataPowerPerfChange_t,
+	*pMpi2EventDataPowerPerfChange_t;
+
+/*defines for CurrentPowerMode and PreviousPowerMode fields */
+#define MPI2_EVENT_PM_INIT_MASK              (0xC0)
+#define MPI2_EVENT_PM_INIT_UNAVAILABLE       (0x00)
+#define MPI2_EVENT_PM_INIT_HOST              (0x40)
+#define MPI2_EVENT_PM_INIT_IO_UNIT           (0x80)
+#define MPI2_EVENT_PM_INIT_PCIE_DPA          (0xC0)
+
+#define MPI2_EVENT_PM_MODE_MASK              (0x07)
+#define MPI2_EVENT_PM_MODE_UNAVAILABLE       (0x00)
+#define MPI2_EVENT_PM_MODE_UNKNOWN           (0x01)
+#define MPI2_EVENT_PM_MODE_FULL_POWER        (0x04)
+#define MPI2_EVENT_PM_MODE_REDUCED_POWER     (0x05)
+#define MPI2_EVENT_PM_MODE_STANDBY           (0x06)
 
 /* Hard Reset Received Event data */
 
@@ -930,6 +954,7 @@ typedef struct _MPI2_EVENT_DATA_SAS_TOPOLOGY_CHANGE_LIST
 #define MPI2_EVENT_SAS_TOPO_LR_RATE_1_5                     (0x08)
 #define MPI2_EVENT_SAS_TOPO_LR_RATE_3_0                     (0x09)
 #define MPI2_EVENT_SAS_TOPO_LR_RATE_6_0                     (0x0A)
+#define MPI25_EVENT_SAS_TOPO_LR_RATE_12_0                   (0x0B)
 
 /* values for the PhyStatus field */
 #define MPI2_EVENT_SAS_TOPO_PHYSTATUS_VACANT                (0x80)
@@ -1357,6 +1382,7 @@ typedef struct _MPI2_FW_IMAGE_HEADER
 /* SAS */
 #define MPI2_FW_HEADER_PID_FAMILY_2108_SAS      (0x0013)
 #define MPI2_FW_HEADER_PID_FAMILY_2208_SAS      (0x0014)
+#define MPI25_FW_HEADER_PID_FAMILY_3108_SAS     (0x0021)
 
 /* use MPI2_IOCFACTS_PROTOCOL_ defines for ProtocolFlags field */
 
@@ -1639,6 +1665,7 @@ typedef struct _MPI2_PWR_MGMT_CONTROL_REQUEST {
 #define MPI2_PM_CONTROL_FEATURE_PORT_WIDTH_MODULATION   (0x02)
 #define MPI2_PM_CONTROL_FEATURE_PCIE_LINK               (0x03) /* obsolete */
 #define MPI2_PM_CONTROL_FEATURE_IOC_SPEED               (0x04)
+#define MPI2_PM_CONTROL_FEATURE_GLOBAL_PWR_MGMT_MODE    (0x05)
 #define MPI2_PM_CONTROL_FEATURE_MIN_PRODUCT_SPECIFIC    (0x80)
 #define MPI2_PM_CONTROL_FEATURE_MAX_PRODUCT_SPECIFIC    (0xFF)
 
@@ -1684,6 +1711,16 @@ typedef struct _MPI2_PWR_MGMT_CONTROL_REQUEST {
 #define MPI2_PM_CONTROL_PARAM1_EIGHTH_IOC_SPEED         (0x08)
 /* Parameter2, Parameter3, and Parameter4 are reserved */
 
+/*parameter usage for the MPI2_PM_CONTROL_FEATURE_GLOBAL_PWR_MGMT_MODE Feature*/
+/*Parameter1 indicates host action regarding global power management mode */
+#define MPI2_PM_CONTROL_PARAM1_TAKE_CONTROL             (0x01)
+#define MPI2_PM_CONTROL_PARAM1_CHANGE_GLOBAL_MODE       (0x02)
+#define MPI2_PM_CONTROL_PARAM1_RELEASE_CONTROL          (0x03)
+/*Parameter2 indicates the requested global power management mode */
+#define MPI2_PM_CONTROL_PARAM2_FULL_PWR_PERF            (0x01)
+#define MPI2_PM_CONTROL_PARAM2_REDUCED_PWR_PERF         (0x08)
+#define MPI2_PM_CONTROL_PARAM2_STANDBY                  (0x40)
+/*Parameter3 and Parameter4 are reserved */
 
 /* PowerManagementControl Reply message */
 typedef struct _MPI2_PWR_MGMT_CONTROL_REPLY {
