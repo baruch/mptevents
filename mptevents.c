@@ -16,6 +16,11 @@
 
 static int opt_debug;
 static int opt_stdout;
+static int opt_skip_old;
+
+static void syslog_none(int priority, const char *format, ...)
+{
+}
 
 static void syslog_stdout(int priority, const char *format, ...)
 {
@@ -55,11 +60,12 @@ static const char *parse_opts(int argc, char **argv)
 		static struct option long_options[] = {
 			{"debug",   no_argument,       0,  'd' },
 			{"stdout",  no_argument,       0,  'o' },
+			{"skip-old", no_argument,      0,  'k' },
 			{"help",    no_argument,       0,  'h' },
 			{0,         0,                 0,  0 }
 		};
 
-		c = getopt_long(argc, argv, "dho",
+		c = getopt_long(argc, argv, "dhok",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -79,6 +85,10 @@ static const char *parse_opts(int argc, char **argv)
 
 			case 'o':
 				opt_stdout = 1;
+				break;
+
+			case 'k':
+				opt_skip_old = 1;
 				break;
 
 			default:
@@ -172,6 +182,7 @@ static void monitor_mpt(int fd, int port)
 	int poll_fd;
 	struct epoll_event event;
 	uint32_t last_context = 0;
+	void (*temp_syslog)(int priority, const char *format, ...);
 
 	ret = enable_events(fd, port);
 	if (ret < 0)
@@ -195,11 +206,20 @@ static void monitor_mpt(int fd, int port)
 	}
 
 	// First run to get the context
+	if (opt_skip_old) {
+		temp_syslog = my_syslog;
+		my_syslog = syslog_none;
+	}
+
 	ret = handle_events(fd, port, &last_context, 1);
 	if (ret < 0) {
 		my_syslog(LOG_ERR, "Error while waiting for first mpt events: %d (%m)", errno);
 		close(poll_fd);
 		return;
+	}
+
+	if (opt_skip_old) {
+		my_syslog = temp_syslog;
 	}
 
 	// Now we run the normal loop with the received context
