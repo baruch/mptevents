@@ -657,6 +657,46 @@ static void dump_sas_phy_counter(struct MPT2_IOCTL_EVENTS *event)
 			evt->Reserved4);
 }
 
+static const char *power_mode_init_to_text(uint8_t val)
+{
+	val &= MPI2_EVENT_PM_INIT_MASK;
+
+	switch (val) {
+		case MPI2_EVENT_PM_INIT_UNAVAILABLE: return "INIT_UNAVAILABLE";
+		case MPI2_EVENT_PM_INIT_HOST: return "INIT_HOST";
+		case MPI2_EVENT_PM_INIT_IO_UNIT: return "INIT_IO_UNIT";
+		case MPI2_EVENT_PM_INIT_PCIE_DPA: return "INIT_PCIE_DPA";
+	}
+
+	return "INIT_UNKNOWN";
+}
+
+static const char *power_mode_mode_to_text(uint8_t val)
+{
+	val &= MPI2_EVENT_PM_MODE_MASK;
+
+	switch (val) {
+		case MPI2_EVENT_PM_MODE_UNAVAILABLE: return "MODE_UNAVAILABLE";
+		case MPI2_EVENT_PM_MODE_UNKNOWN: return "MODE_UNKNOWN";
+		case MPI2_EVENT_PM_MODE_FULL_POWER: return "MODE_FULL_POWER";
+		case MPI2_EVENT_PM_MODE_REDUCED_POWER: return "MODE_REDUCED_POWER";
+		case MPI2_EVENT_PM_MODE_STANDBY: return "MODE_STANDBY";
+	}
+
+	return "MODE_UNKNOWN_FALLOUT";
+}
+
+static void dump_power_performance_change(struct MPT2_IOCTL_EVENTS *event)
+{
+	MPI2_EVENT_DATA_POWER_PERF_CHANGE *evt = (void*)&event->data;
+
+	my_syslog(LOG_INFO, "Power Performance Change: context=%u current_power_mode=%02X(%s %s) prev_power_mode=%02X(%s %s) reserved1=%04X",
+			event->context,
+			evt->CurrentPowerMode, power_mode_init_to_text(evt->CurrentPowerMode), power_mode_mode_to_text(evt->CurrentPowerMode),
+			evt->PreviousPowerMode, power_mode_init_to_text(evt->PreviousPowerMode), power_mode_mode_to_text(evt->PreviousPowerMode),
+			evt->Reserved1);
+}
+
 static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 {
 	switch (event->event) {
@@ -754,6 +794,10 @@ static void dump_event(struct MPT2_IOCTL_EVENTS *event)
 
 		case MPI2_EVENT_HOST_MESSAGE:
 			dump_name_only("Host Message", event);
+			break;
+
+		case MPI2_EVENT_POWER_PERFORMANCE_CHANGE:
+			dump_power_performance_change(event);
 			break;
 
 		default:
