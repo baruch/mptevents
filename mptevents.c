@@ -9,10 +9,33 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <getopt.h>
+#include <stdarg.h>
+#include <time.h>
 
 #include "mpt.h"
 
 static int opt_debug;
+static int opt_stdout;
+
+static void syslog_stdout(int priority, const char *format, ...)
+{
+        time_t now;
+        struct tm *tm;
+        char timestr[32];
+        va_list ap;
+
+        now = time(NULL);
+        tm = localtime(&now);
+        strftime(timestr, sizeof(timestr), "%Y-%m-%d %H:%M:%S", tm);
+        printf("%s ", timestr);
+
+        va_start(ap, format);
+        vprintf(format, ap);
+        va_end(ap);
+
+        putchar('\n');
+        fflush(stdout);
+}
 
 static int usage(const char *name)
 {
@@ -31,11 +54,12 @@ static const char *parse_opts(int argc, char **argv)
 		int option_index = 0;
 		static struct option long_options[] = {
 			{"debug",   no_argument,       0,  'd' },
+			{"stdout",  no_argument,       0,  'o' },
 			{"help",    no_argument,       0,  'h' },
 			{0,         0,                 0,  0 }
 		};
 
-		c = getopt_long(argc, argv, "dh",
+		c = getopt_long(argc, argv, "dho",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -51,6 +75,10 @@ static const char *parse_opts(int argc, char **argv)
 
 			case 'h':
 				opt_help = 1;
+				break;
+
+			case 'o':
+				opt_stdout = 1;
 				break;
 
 			default:
@@ -94,7 +122,7 @@ static int enable_events(int fd, int port)
 
 	ret = ioctl(fd, MPT2EVENTENABLE, &cmd);
 	if (ret < 0) {
-		syslog(LOG_ERR, "Failed to set the events on mpt device, this might not be a real mpt device: %d (%m)", errno);
+		my_syslog(LOG_ERR, "Failed to set the events on mpt device, this might not be a real mpt device: %d (%m)", errno);
 	}
 
 	return ret;
@@ -120,7 +148,7 @@ static int handle_events(int fd, int port, uint32_t *highest_context, int first_
 			sleep(1);
 			return 0;
 		}
-		syslog(LOG_ERR, "Error while reading mpt events: %d (%m)", errno);
+		my_syslog(LOG_ERR, "Error while reading mpt events: %d (%m)", errno);
 		return -1;
 	}
 
@@ -151,7 +179,7 @@ static void monitor_mpt(int fd, int port)
 
 	poll_fd = epoll_create(1);
 	if (poll_fd < 0) {
-		syslog(LOG_ERR, "Error creating epoll to wait for events: %d (%m)", errno);
+		my_syslog(LOG_ERR, "Error creating epoll to wait for events: %d (%m)", errno);
 		return;
 	}
 
@@ -161,7 +189,7 @@ static void monitor_mpt(int fd, int port)
 
 	ret = epoll_ctl(poll_fd, EPOLL_CTL_ADD, fd, &event);
 	if (ret < 0) {
-		syslog(LOG_ERR, "Error adding fd to epoll: %d (%m)", errno);
+		my_syslog(LOG_ERR, "Error adding fd to epoll: %d (%m)", errno);
 		close(poll_fd);
 		return;
 	}
@@ -169,7 +197,7 @@ static void monitor_mpt(int fd, int port)
 	// First run to get the context
 	ret = handle_events(fd, port, &last_context, 1);
 	if (ret < 0) {
-		syslog(LOG_ERR, "Error while waiting for first mpt events: %d (%m)", errno);
+		my_syslog(LOG_ERR, "Error while waiting for first mpt events: %d (%m)", errno);
 		close(poll_fd);
 		return;
 	}
@@ -181,7 +209,7 @@ static void monitor_mpt(int fd, int port)
 			if (errno == EINTR) {
 				continue;
 			} else {
-				syslog(LOG_ERR, "Error while waiting for mpt events: %d (%m)", errno);
+				my_syslog(LOG_ERR, "Error while waiting for mpt events: %d (%m)", errno);
 				break;
 			}
 		} else if (ret == 0) {
@@ -204,9 +232,13 @@ int main(int argc, char **argv)
 	if (devname == NULL)
 		return 1;
 
-	openlog("mptevents", LOG_PERROR, LOG_DAEMON);
-	syslog(LOG_INFO, "mptevents starting for device %s", devname);
-	my_syslog = syslog;
+	if (opt_stdout) {
+		openlog("mptevents", LOG_PERROR, LOG_DAEMON);
+		my_syslog = syslog;
+	} else {
+		my_syslog = syslog_stdout;
+	}
+	my_syslog(LOG_INFO, "mptevents starting for device %s", devname);
 
 	attempts = 10;
 
@@ -216,13 +248,15 @@ int main(int argc, char **argv)
 			monitor_mpt(fd, port);
 			close(fd);
 		} else {
-			syslog(LOG_INFO, "Failed to open mpt device %s: %d (%m)", devname, errno);
+			my_syslog(LOG_INFO, "Failed to open mpt device %s: %d (%m)", devname, errno);
 			attempts--;
 		}
 		sleep(30);
 	} while (attempts > 0);
 
-	syslog(LOG_INFO, "mptevents stopping");
-	closelog();
+	my_syslog(LOG_INFO, "mptevents stopping");
+
+	if (!opt_stdout)
+		closelog();
 	return 0;
 }
