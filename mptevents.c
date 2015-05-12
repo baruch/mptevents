@@ -105,9 +105,7 @@ static const char *parse_opts(int argc, char **argv)
 		fprintf(stderr, "Missing device name argument\n");
 		usage(argv[0]);
 		return NULL;
-	}
-
-	if (optind != argc-1) {
+	} else if (optind != argc-1) {
 		fprintf(stderr, "Too many devices given, can only monitor one!\n");
 		usage(argv[0]);
 		return NULL;
