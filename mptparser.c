@@ -258,6 +258,7 @@ static const char *sas_discovery_flags_to_text(uint8_t flags)
 	static char text[128];
 	int i = 0;
 
+	text[0] = 0; // Re-initialize static buffer
 	if (flags & MPI2_EVENT_SAS_DISC_IN_PROGRESS)
 		i += sprintf(text, "%s", "IN_PROGRESS");
 	if (flags & MPI2_EVENT_SAS_DISC_DEVICE_CHANGE) {
@@ -283,6 +284,7 @@ static const char *sas_discovery_status_to_text(uint32_t status)
 	static char text[256];
 	int i = 0;
 
+	text[0] = 0; // Re-initialize static buffer
 #define OUTPUT_FLAG(val, name) \
 	do { \
 		if (status & val) { \
@@ -452,6 +454,7 @@ static const char *sas_topo_phy_status_to_text(uint8_t status)
 	static char text[256];
 	int i = 0;
 
+	text[0] = 0; // Re-initialize static buffer
 #define OUTPUT_FLAG(val, name) \
 	do { \
 		if (status & val) { \
