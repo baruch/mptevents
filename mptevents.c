@@ -108,7 +108,7 @@ static const char *parse_opts(int argc, char **argv)
 	}
 
 	if (optind != argc-1) {
-		fprintf(stderr, "Too many devices given, can only monitor once!\n");
+		fprintf(stderr, "Too many devices given, can only monitor one!\n");
 		usage(argv[0]);
 		return NULL;
 	}
