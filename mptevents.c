@@ -253,10 +253,10 @@ int main(int argc, char **argv)
 		return 1;
 
 	if (opt_stdout) {
+		my_syslog = syslog_stdout;
+	} else {
 		openlog("mptevents", LOG_PERROR, LOG_DAEMON);
 		my_syslog = syslog;
-	} else {
-		my_syslog = syslog_stdout;
 	}
 	my_syslog(LOG_INFO, "mptevents starting for device %s", devname);
 
