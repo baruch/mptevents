@@ -71,9 +71,11 @@ static void dump_sas_device_status_change(struct MPT2_IOCTL_EVENTS *event)
 static void dump_log_data(struct MPT2_IOCTL_EVENTS *event)
 {
 	MPI2_EVENT_DATA_LOG_ENTRY_ADDED *evt = (void*)&event->data;
+	char log_data_hex[MPI2_EVENT_DATA_LOG_DATA_LENGTH*3]; // Add place for a space after each hex number and a null
 
-	my_syslog(LOG_INFO, "Log Entry Added: context=%u timestamp=%"PRIu64" reserved1=%u seq=%u entry_qualifier=%u vp_id=%u vf_id=%u reserved2=%u", event->context, evt->TimeStamp, evt->Reserved1, evt->LogSequence, evt->LogEntryQualifier, evt->VP_ID, evt->VF_ID, evt->Reserved2);
-	// TODO: Parse or at least hexdump the LogData
+	buf2hex((char*)evt->LogData, MPI2_EVENT_DATA_LOG_DATA_LENGTH, log_data_hex, sizeof(log_data_hex));
+	my_syslog(LOG_INFO, "Log Entry Added: context=%u timestamp=%"PRIu64" reserved1=%u seq=%u entry_qualifier=%u vp_id=%u vf_id=%u reserved2=%u log_data='%s'",
+			event->context, evt->TimeStamp, evt->Reserved1, evt->LogSequence, evt->LogEntryQualifier, evt->VP_ID, evt->VF_ID, evt->Reserved2, log_data_hex);
 }
 
 static void dump_gpio_interrupt(struct MPT2_IOCTL_EVENTS *event)
