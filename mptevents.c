@@ -44,8 +44,15 @@ static void syslog_stdout(int priority, const char *format, ...)
 
 static int usage(const char *name)
 {
-	fprintf(stderr, "\nmptevents %s\n", VERSION);
+	fprintf(stderr, "\nmptevents [options] %s\n", VERSION);
 	fprintf(stderr, "Usage:\n\t%s <dev>\n\tf.ex. %s /dev/mptctl\n\n", name, name);
+	fprintf(stderr, "Options:\n");
+	fprintf(stderr, "  -h  --help          Display this usage information.\n"
+	                "  -d  --debug         Save raw data to a debug file for later re-parsing with mptevents_offline.\n"
+	                "  -o  --stdout        Output the logs to stdout with a timestamp (else, output to syslog without timestamps).\n"
+	                "  -k  --skip-old      Skip the old events in case of a restart.\n"
+	                "\n"
+	       );
 	return 1;
 }
 
