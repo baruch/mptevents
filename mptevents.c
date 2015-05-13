@@ -92,7 +92,7 @@ static const char *parse_opts(int argc, char **argv)
 				break;
 
 			default:
-				printf("?? getopt returned character code 0%o ??\n", c);
+				return NULL;
 		}
 	}
 
