@@ -1,6 +1,8 @@
 mptevents
 =========
 
+[![Build Status](https://travis-ci.org/baruch/mptevents.svg?branch=master)](https://travis-ci.org/baruch/mptevents)
+
 The MPT drivers from LSI have an event reporting mechanism built in to the
 driver which enables to get a sneak peak into what happens in the SAS network
 at a level below that of the OS itself and can provide insights when debugging
