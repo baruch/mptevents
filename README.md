@@ -18,6 +18,10 @@ Just make sure to run this daemon at system startup or when debugging is
 needed, give it the device name to open such as /dev/mptctl or /dev/mpt2ctl and
 it will send syslog messages.
 
+If you give it no arguments it will try to auto-detect the control device and
+use that if it finds only one. If more than one is available you'll need to
+decide which one to use.
+
 Understanding the logs
 ----------------------
 

@@ -11,8 +11,14 @@
 #include <getopt.h>
 #include <stdarg.h>
 #include <time.h>
+#include <dirent.h>
 
 #include "mpt.h"
+
+#define DEV_DIR "/dev"
+#define MISC_MAJOR_NUM 10
+#define MPT2SAS_MINOR_NUM 221
+#define MPT3SAS_MINOR_NUM 222
 
 static int opt_debug;
 static int opt_stdout;
@@ -56,10 +62,59 @@ static int usage(const char *name)
 	return 1;
 }
 
+static const char *find_mptctl_device(void)
+{
+	DIR *dir;
+	struct dirent *dirent;
+	static char matching_filename[256];
+	int count = 0;
+
+	matching_filename[0] = 0;
+
+	dir = opendir(DEV_DIR);
+	if (!dir)
+		return NULL;
+
+	while ( (dirent = readdir(dir)) != NULL ) {
+		char filename[256];
+		struct stat stbuf;
+
+		snprintf(filename, sizeof(filename), "%s/%s", DEV_DIR, dirent->d_name);
+		int ret = stat(filename, &stbuf);
+
+		if (ret < 0)
+			continue;
+
+		if (!S_ISCHR(stbuf.st_mode))
+			continue;
+
+		if (major(stbuf.st_rdev) == MISC_MAJOR_NUM &&
+				(minor(stbuf.st_rdev) == MPT2SAS_MINOR_NUM ||
+				 minor(stbuf.st_rdev) == MPT3SAS_MINOR_NUM))
+		{
+			printf("Found control device: %s\n", filename);
+			count++;
+
+			strcpy(matching_filename, filename);
+		}
+	}
+
+	closedir(dir);
+
+	if (count > 1) {
+		my_syslog(LOG_CRIT, "More than one control file found, cannot auto-select one!");
+		matching_filename[0] = 0; // Empty selection;
+	}
+
+	// If we have something in the buffer, return it, otherwise we failed
+	return matching_filename[0] ? matching_filename : NULL;
+}
+
 static const char *parse_opts(int argc, char **argv)
 {
 	int c;
 	int opt_help = 0;
+	const char *mptctl_dev = NULL;
 
 	while (1) {
 		//int this_option_optind = optind ? optind : 1;
@@ -109,16 +164,23 @@ static const char *parse_opts(int argc, char **argv)
 	}
 
 	if (optind == argc) {
-		fprintf(stderr, "Missing device name argument\n");
-		usage(argv[0]);
-		return NULL;
+		// Try to autodetect a device
+		mptctl_dev = find_mptctl_device();
+		if (!mptctl_dev) {
+			fprintf(stderr, "Missing device name argument (auto-detection failed)\n");
+			usage(argv[0]);
+			return NULL;
+		}
 	} else if (optind != argc-1) {
 		fprintf(stderr, "Too many devices given, can only monitor one!\n");
 		usage(argv[0]);
 		return NULL;
+	} else {
+		mptctl_dev = argv[optind];
+		// TODO: Should probably validate we got a real mptctl control device
 	}
 
-	return argv[optind];
+	return mptctl_dev;
 }
 
 static int enable_events(int fd, int port)
