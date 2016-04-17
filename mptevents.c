@@ -315,6 +315,8 @@ int main(int argc, char **argv)
 	int port = 0;
 	const char *devname;
 
+	my_syslog = syslog_stdout;
+
 	devname = parse_opts(argc, argv);
 	if (devname == NULL)
 		return 1;
