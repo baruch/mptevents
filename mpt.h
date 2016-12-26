@@ -15,6 +15,9 @@ typedef uint64_t __le64;
 #include "mpi/mpi2_cnfg.h"
 #include "mpi/mpi2_ioc.h"
 #include "mpt2sas_ctl.h"
+#include "mpt3sas_ctl.h"
+
+#define MPT_EVENTS_LOG "/var/log/mptevents.log"
 
 struct mpt_events {
 	struct mpt2_ioctl_header hdr;

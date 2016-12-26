@@ -61,11 +61,12 @@ static const char *reason_code_to_text(unsigned rc)
 	return "UNKNOWN";
 }
 
-static void dump_sas_device_status_change(struct MPT2_IOCTL_EVENTS *event)
+static void dump_sas_device_status_change(struct MPT2_IOCTL_EVENTS *event,
+                                          int ioc)
 {
 	MPI2_EVENT_DATA_SAS_DEVICE_STATUS_CHANGE *evt = (void*)&event->data;
 
-	my_syslog(LOG_INFO, "SAS Device Status Change: context=%u tag=%04x rc=%u(%s) port=%u asc=%02X ascq=%02X handle=%04x reserved2=%u SASAddress=%"PRIx64, event->context, evt->TaskTag, evt->ReasonCode, reason_code_to_text(evt->ReasonCode), evt->PhysicalPort, evt->ASC, evt->ASCQ, evt->DevHandle, evt->Reserved2, evt->SASAddress);
+	my_syslog(LOG_INFO, "SAS Device Status Change: ioc=%d context=%u tag=%04x rc=%u(%s) port=%u asc=%02X ascq=%02X handle=%04x reserved2=%u SASAddress=%"PRIx64, ioc, event->context, evt->TaskTag, evt->ReasonCode, reason_code_to_text(evt->ReasonCode), evt->PhysicalPort, evt->ASC, evt->ASCQ, evt->DevHandle, evt->Reserved2, evt->SASAddress);
 }
 
 static void dump_log_data(struct MPT2_IOCTL_EVENTS *event)
@@ -702,11 +703,11 @@ static void dump_power_performance_change(struct MPT2_IOCTL_EVENTS *event)
 			evt->Reserved1);
 }
 
-static void dump_event(struct MPT2_IOCTL_EVENTS *event)
+static void dump_event(struct MPT2_IOCTL_EVENTS *event, int ioc)
 {
 	switch (event->event) {
 		case MPI2_EVENT_SAS_DEVICE_STATUS_CHANGE:
-			dump_sas_device_status_change(event);
+			dump_sas_device_status_change(event, ioc);
 			break;
 
 		case MPI2_EVENT_LOG_DATA:
@@ -828,7 +829,7 @@ void dump_all_events(struct mpt_events *events, uint32_t *highest_context, int f
 		 * replace it once we finished the read
 		 */
 		if (first_read || (int)(event->context - *highest_context) > 0) {
-			dump_event(event);
+			dump_event(event, events->hdr.ioc_number);
 			new_context = event->context;
 		}
 	}

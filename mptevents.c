@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <syslog.h>
 #include <errno.h>
 #include <memory.h>
@@ -16,9 +17,24 @@
 #include "mpt.h"
 
 #define DEV_DIR "/dev"
+#define MPT2_DIR "/dev/mpt2ctl"
+#define MPT3_DIR "/dev/mpt3ctl"
+#define SCSIHOST_DIR "/sys/class/scsi_host"
 #define MISC_MAJOR_NUM 10
 #define MPT2SAS_MINOR_NUM 221
 #define MPT3SAS_MINOR_NUM 222
+
+typedef enum mpt_type {
+    MPT2SAS,
+    MPT3SAS
+}mpt_type_e;
+
+typedef struct mpt_ioc {
+    int ioc_id;
+    uint32_t ioc_last_context;
+    mpt_type_e ioc_type;
+    int ioc_enabled;
+}mpt_ioc_t;
 
 static int opt_debug;
 static int opt_stdout;
@@ -51,7 +67,7 @@ static void syslog_stdout(int priority, const char *format, ...)
 static int usage(const char *name)
 {
 	fprintf(stderr, "\nmptevents [options] %s\n", VERSION);
-	fprintf(stderr, "Usage:\n\t%s <dev>\n\tf.ex. %s /dev/mptctl\n\n", name, name);
+	fprintf(stderr, "Usage:\n\t%s <dev>\n\tFor example %s /dev/mpt3ctl\n\n", name, name);
 	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "  -h  --help          Display this usage information.\n"
 	                "  -d  --debug         Save raw data to a debug file for later re-parsing with mptevents_offline.\n"
@@ -60,6 +76,97 @@ static int usage(const char *name)
 	                "\n"
 	       );
 	return 1;
+}
+
+static int find_mpt_host(mpt_ioc_t **ioc_ids, int *ioc_ids_nr)
+{
+    DIR *dir;
+	struct dirent *dirent;
+    int fd = -1;
+    ssize_t ret = -1;
+    mpt_ioc_t *ids = NULL;
+    int ids_idx = 0;
+    int ids_sz = 10;
+
+    ids = malloc(sizeof(*ids) * ids_sz);
+    if (!ids)
+        return -1;
+
+    memset(ids, 0x0, sizeof(*ids) * ids_sz);
+
+	dir = opendir(SCSIHOST_DIR);
+	if (!dir) {
+        free(ids);
+		return -1;
+	}
+
+    while ( (dirent = readdir(dir)) != NULL ) {
+		char filename[256];
+		char procname[8];
+
+		snprintf(filename, sizeof(filename), "%s/%s/proc_name", SCSIHOST_DIR, dirent->d_name);
+
+        fd = open(filename, O_RDONLY);
+		if (fd < 0)
+			continue;
+
+		ret = read(fd, procname, 8);
+		if (ret < 0)
+			continue;
+
+        close(fd);
+
+        procname[7] = '\0';
+
+        if (strncmp("mpt3sas", procname, 7) == 0) {
+            ids[ids_idx].ioc_type = MPT3SAS;
+        } else if (strncmp("mpt2sas", procname, 7) == 0) {
+            ids[ids_idx].ioc_type = MPT2SAS;
+        } else {
+            continue;
+        }
+
+        snprintf(filename, sizeof(filename), "%s/%s/unique_id", SCSIHOST_DIR, dirent->d_name);
+
+        fd = open(filename, O_RDONLY);
+        if (fd < 0)
+            continue;
+
+        ret = read(fd, procname, 8);
+        if (ret < 0)
+            continue;
+
+        close(fd);
+
+        if (ids_idx == ids_sz)
+        {
+            ids_sz *= 2;
+            ids = realloc(ids, sizeof(*ids) * ids_sz);
+            if (!ids)
+                break;
+
+            ids[ids_idx].ioc_id = atoi(procname);
+            ids[ids_idx].ioc_last_context = 0;
+            my_syslog(LOG_INFO, "Found MPT ioc %d type %d",
+                      ids[ids_idx].ioc_id, ids[ids_idx].ioc_type);
+            ids_idx += 1;
+        }
+        else
+        {
+            ids[ids_idx].ioc_id = atoi(procname);
+            ids[ids_idx].ioc_last_context = 0;
+            my_syslog(LOG_INFO, "Found MPT ioc %d type %d",
+                      ids[ids_idx].ioc_id, ids[ids_idx].ioc_type);
+            ids_idx += 1;
+        }
+	}
+
+	closedir(dir);
+
+    *ioc_ids = ids;
+    *ioc_ids_nr = ids_idx;
+
+    return 0;
 }
 
 static const char *find_mptctl_device(void)
@@ -90,8 +197,7 @@ static const char *find_mptctl_device(void)
 
 		if (major(stbuf.st_rdev) == MISC_MAJOR_NUM &&
 				(minor(stbuf.st_rdev) == MPT2SAS_MINOR_NUM ||
-				 minor(stbuf.st_rdev) == MPT3SAS_MINOR_NUM))
-		{
+				 minor(stbuf.st_rdev) == MPT3SAS_MINOR_NUM)) {
 			printf("Found control device: %s\n", filename);
 			count++;
 
@@ -177,13 +283,18 @@ static const char *parse_opts(int argc, char **argv)
 		return NULL;
 	} else {
 		mptctl_dev = argv[optind];
-		// TODO: Should probably validate we got a real mptctl control device
-	}
+        if ((strncmp(MPT2_DIR, mptctl_dev, strlen(MPT2_DIR)) != 0)
+            && (strncmp(MPT3_DIR, mptctl_dev, strlen(MPT3_DIR)) != 0)) {
+            fprintf(stderr, "Unsupported device %s.\n", mptctl_dev);
+			usage(argv[0]);
+            return NULL;
+        }
+    }
 
 	return mptctl_dev;
 }
 
-static int enable_events(int fd, int port)
+static int enable_events(int fd, int port, mpt_type_e type)
 {
 	struct mpt2_ioctl_eventenable cmd;
 	int i;
@@ -197,16 +308,19 @@ static int enable_events(int fd, int port)
 	for (i = 0; i < 4; i++)
 		cmd.event_types[i] = 0xFFFFFFFF;
 
-	ret = ioctl(fd, MPT2EVENTENABLE, &cmd);
+	ret = ioctl(fd, (type == MPT2SAS) ? MPT2EVENTENABLE : MPT3EVENTENABLE, &cmd);
 	if (ret < 0) {
 		my_syslog(LOG_ERR, "Failed to set the events on mpt device, this might not be a real mpt device: %d (%m)", errno);
 	}
+
+    my_syslog(LOG_INFO, "Enable the events on ioc %d", port);
 
 	return ret;
 }
 
 /* We have to read all the events and figure out which of them is new and which isn't */
-static int handle_events(int fd, int port, uint32_t *highest_context, int first_read)
+static int handle_events(int fd, int port, mpt_type_e type,
+                         uint32_t *highest_context, int first_read)
 {
 	struct mpt_events events;
 	int ret;
@@ -216,7 +330,7 @@ static int handle_events(int fd, int port, uint32_t *highest_context, int first_
 	events.hdr.port_number = 0;
 	events.hdr.max_data_size = sizeof(events);
 
-	ret = ioctl(fd, MPT2EVENTREPORT, &events);
+	ret = ioctl(fd, (type == MPT2SAS) ? MPT2EVENTREPORT : MPT3EVENTREPORT, &events);
 	if (ret < 0) {
 		if (errno == EINTR)
 			return 0;
@@ -230,7 +344,7 @@ static int handle_events(int fd, int port, uint32_t *highest_context, int first_
 	}
 
 	if (opt_debug) {
-		int debug_fd = open("/tmp/mptevents.debug.log", O_WRONLY|O_CREAT|O_APPEND, 0600);
+		int debug_fd = open(MPT_EVENTS_LOG, O_WRONLY|O_CREAT|O_APPEND, 0600);
 		if (debug_fd >= 0) {
 			uint32_t sz = sizeof(events);
 			write(debug_fd, &sz, sizeof(sz));
@@ -243,22 +357,42 @@ static int handle_events(int fd, int port, uint32_t *highest_context, int first_
 	return 0;
 }
 
-static void monitor_mpt(int fd, int port)
+static void monitor_mpt(int fd)
 {
 	int ret;
 	int poll_fd;
 	struct epoll_event event;
 	uint32_t last_context = 0;
+    mpt_ioc_t *ids = NULL;
+    int ids_nr = 0;
+    int idx = 0;
 	void (*temp_syslog)(int priority, const char *format, ...);
 
-	ret = enable_events(fd, port);
-	if (ret < 0)
-		return;
+    ret = find_mpt_host(&ids, &ids_nr);
+    if (ret < 0)
+        return;
+
+    if (ids_nr == 0) {
+        free(ids);
+        my_syslog(LOG_ERR, "Not found any supported MPT ioc");
+        return;
+    }
+
+	for (idx = 0; idx < ids_nr; idx++) {
+		ret = enable_events(fd, idx, ids[idx].ioc_type);
+		if (ret < 0) {
+			ids[idx].ioc_enabled = 0;
+			continue;
+		}
+
+		ids[idx].ioc_enabled = 1;
+	}
 
 	poll_fd = epoll_create(1);
 	if (poll_fd < 0) {
 		my_syslog(LOG_ERR, "Error creating epoll to wait for events: %d (%m)", errno);
-		return;
+        free(ids);
+        return;
 	}
 
 	memset(&event, 0, sizeof(event));
@@ -269,6 +403,7 @@ static void monitor_mpt(int fd, int port)
 	if (ret < 0) {
 		my_syslog(LOG_ERR, "Error adding fd to epoll: %d (%m)", errno);
 		close(poll_fd);
+        free(ids);
 		return;
 	}
 
@@ -278,11 +413,15 @@ static void monitor_mpt(int fd, int port)
 		my_syslog = syslog_none;
 	}
 
-	ret = handle_events(fd, port, &last_context, 1);
-	if (ret < 0) {
-		my_syslog(LOG_ERR, "Error while waiting for first mpt events: %d (%m)", errno);
-		close(poll_fd);
-		return;
+    for (idx = 0; idx < ids_nr; idx++) {
+        if (!ids[idx].ioc_enabled)
+            continue;
+
+		ret = handle_events(fd, idx, ids[idx].ioc_type,
+		                    &(ids[idx].ioc_last_context), 1);
+		if (ret < 0) {
+			my_syslog(LOG_ERR, "Error while waiting for first mpt events: %d (%m) ioc %d", errno, ids[idx].ioc_id);
+		}
 	}
 
 	if (opt_skip_old) {
@@ -303,16 +442,22 @@ static void monitor_mpt(int fd, int port)
 			continue;
 		}
 
-		ret = handle_events(fd, port, &last_context, 0);
-	} while (ret == 0);
+        for (idx = 0; idx < ids_nr; idx++) {
+            if (!ids[idx].ioc_enabled)
+                continue;
+
+		    ret = handle_events(fd, idx, ids[idx].ioc_type,
+                                &(ids[idx].ioc_last_context), 0);
+        }
+	} while (1);
 
 	close(poll_fd);
+    free(ids);
 }
 
 int main(int argc, char **argv)
 {
 	int attempts;
-	int port = 0;
 	const char *devname;
 
 	my_syslog = syslog_stdout;
@@ -324,7 +469,7 @@ int main(int argc, char **argv)
 	if (opt_stdout) {
 		my_syslog = syslog_stdout;
 	} else {
-		openlog("mptevents", LOG_PERROR, LOG_DAEMON);
+		openlog("mptevents", LOG_PERROR, LOG_USER);
 		my_syslog = syslog;
 	}
 	my_syslog(LOG_INFO, "mptevents starting for device %s", devname);
@@ -334,7 +479,7 @@ int main(int argc, char **argv)
 	do {
 		int fd = open(devname, O_RDWR);
 		if (fd >= 0) {
-			monitor_mpt(fd, port);
+			monitor_mpt(fd);
 			close(fd);
 		} else {
 			my_syslog(LOG_INFO, "Failed to open mpt device %s: %d (%m)", devname, errno);

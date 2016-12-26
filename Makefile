@@ -1,4 +1,4 @@
-VERSION=1.2
+VERSION=1.3
 CFLAGS=-O0 -g -Wall -Impt -DVERSION=\"${VERSION}\"
 
 all: mptevents mptevents_offline

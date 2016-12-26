@@ -19,6 +19,12 @@ static void my_syslog_wrapper(int priority, const char *fmt, ...)
 	(void)priority; // unused
 }
 
+static void usage(const char *name)
+{
+	fprintf(stderr, "\nmptevents_offline %s\n", VERSION);
+	fprintf(stderr, "Usage:\n\t%s <dev>\n\tFor example %s %s\n\n", name, name, MPT_EVENTS_LOG);
+}
+
 int main(int argc, char **argv)
 {
 	struct mpt_events events;
@@ -28,6 +34,11 @@ int main(int argc, char **argv)
 	int first_read = 1;
 	uint32_t last_context = 0;
 	int ret;
+
+    if (argc == 1) {
+        usage(argv[0]);
+        return 1;
+    }
 
 	my_syslog = my_syslog_wrapper;
 
