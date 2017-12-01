@@ -101,7 +101,7 @@ static int find_mpt_host(mpt_ioc_t **ioc_ids, int *ioc_ids_nr)
 	}
 
     while ( (dirent = readdir(dir)) != NULL ) {
-		char filename[256];
+		char filename[512];
 		char procname[8];
 
 		snprintf(filename, sizeof(filename), "%s/%s/proc_name", SCSIHOST_DIR, dirent->d_name);
@@ -362,7 +362,6 @@ static void monitor_mpt(int fd)
 	int ret;
 	int poll_fd;
 	struct epoll_event event;
-	uint32_t last_context = 0;
     mpt_ioc_t *ids = NULL;
     int ids_nr = 0;
     int idx = 0;
