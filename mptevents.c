@@ -76,7 +76,7 @@ static const char *find_mptctl_device(void)
 		return NULL;
 
 	while ( (dirent = readdir(dir)) != NULL ) {
-		char filename[256];
+		char filename[512];
 		struct stat stbuf;
 
 		snprintf(filename, sizeof(filename), "%s/%s", DEV_DIR, dirent->d_name);
